@@ -68,7 +68,7 @@ jobs:
         env:
           CI: 'true'
           CARGO_PACKAGER_SIGN_PRIVATE_KEY: ${{ secrets.CARGO_PACKAGER_SIGN_PRIVATE_KEY }}
-        run: cargo packager --release --verbose
+        run: cargo packager --release --formats ${{ matrix.fmt }} --verbose
 
       - name: Locate updater artifact
         id: art
