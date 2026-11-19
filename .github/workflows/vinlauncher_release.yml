@@ -12,16 +12,20 @@ concurrency:
 
 jobs:
   package:
+    outputs:
+      version: ${{ steps.art.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: ubuntu-22.04
             os_key: linux
-            ext: AppImage
+            fmt: appimage
+            pattern: '*.AppImage'
           - platform: windows-latest
             os_key: windows
-            ext: exe
+            fmt: nsis
+            pattern: '*-setup.exe'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -59,29 +63,19 @@ jobs:
         shell: bash
         run: python3 distribution/windows/bundle-crt.py
 
-      - name: Package
+      - name: Package (signs the updater artifact)
         shell: bash
         env:
           CI: 'true'
+          CARGO_PACKAGER_SIGN_PRIVATE_KEY: ${{ secrets.CARGO_PACKAGER_SIGN_PRIVATE_KEY }}
         run: cargo packager --release --verbose
 
-      - name: (Linux) Upload AppImage
-        if: matrix.os_key == 'linux'
+      - name: Locate updater artifact
+        id: art
         shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
-          f="$(ls target/release/*.AppImage | head -n1)"
-          base="VinLauncher_1.0.0_linux_x64.AppImage"
-          cp "$f" "$base"
-          gh release upload v1.0.0 "$base" --clobber --repo "$GITHUB_REPOSITORY"
-
-      - name: (Windows) Locate installer
-        if: matrix.os_key == 'windows'
-        id: win_installer
-        shell: bash
-        run: echo "path=$(ls target/release/*-setup.exe | head -n1)" >> "$GITHUB_OUTPUT"
+          echo "path=$(ls target/release/${{ matrix.pattern }} | head -n1)" >> "$GITHUB_OUTPUT"
+          echo "version=$(sed -n -E '/^\[workspace\.package\]/,/^\[/ s/^version[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' Cargo.toml | head -n1)" >> "$GITHUB_OUTPUT"
 
       - name: (Windows) Smoke-test installer layout
         if: matrix.os_key == 'windows'
@@ -90,7 +84,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $dest = 'C:\vinlauncher-smoke'
           Remove-Item -Recurse -Force $dest -ErrorAction SilentlyContinue
-          $exe = Resolve-Path '${{ steps.win_installer.outputs.path }}'
+          $exe = Resolve-Path '${{ steps.art.outputs.path }}'
           # NSIS: /S is silent, /D= sets the install dir and must be the last arg.
           $p = Start-Process -FilePath $exe -ArgumentList '/S', "/D=$dest" -Wait -PassThru
           if ($p.ExitCode -ne 0) { Write-Error "installer exited $($p.ExitCode)"; exit 1 }
@@ -107,14 +101,96 @@ jobs:
           }
           Write-Host "OK: CRT DLLs sit beside oneclient_app.exe"
 
-      - name: (Windows) Upload installer
-        if: matrix.os_key == 'windows'
+      - name: Sign updater artifact
+        shell: bash
+        env:
+          CARGO_PACKAGER_SIGN_PRIVATE_KEY: ${{ secrets.CARGO_PACKAGER_SIGN_PRIVATE_KEY }}
+          PATH_ART: ${{ steps.art.outputs.path }}
+        run: |
+          cargo packager signer sign --private-key "$CARGO_PACKAGER_SIGN_PRIVATE_KEY" --password "" "$PATH_ART"
+          test -e "$PATH_ART.sig" || { echo "::error::no .sig produced"; exit 1; }
+
+      - name: Upload assets + manifest fragment
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PATH_EXE: ${{ steps.win_installer.outputs.path }}
+          OS_KEY: ${{ matrix.os_key }}
+          FMT: ${{ matrix.fmt }}
+          PATH_ART: ${{ steps.art.outputs.path }}
+          VERSION: ${{ steps.art.outputs.version }}
         run: |
           set -euo pipefail
-          base="VinLauncher_1.0.0_windows_x64-setup.exe"
-          cp "$PATH_EXE" "$base"
-          gh release upload v1.0.0 "$base" --clobber --repo "$GITHUB_REPOSITORY"
+          TAG="v$VERSION"
+          base="VinLauncher_${VERSION}_${OS_KEY}_x64"
+          case "$OS_KEY" in
+            windows) ext="setup.exe" ;;
+            linux)   ext="AppImage" ;;
+          esac
+          cp "$PATH_ART" "$base.$ext"
+          cp "$PATH_ART.sig" "$base.$ext.sig"
+
+          # Ensure the release exists (draft not needed; publishing makes it the
+          # "latest" release so releases/latest/download/latest.json resolves).
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+                 --title "VinLauncher $VERSION" --notes "VinLauncher $VERSION"
+          gh release upload "$TAG" "$base.$ext" "$base.$ext.sig" --clobber --repo "$GITHUB_REPOSITORY"
+
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/$base.$ext"
+          KEY="${OS_KEY}-x86_64"
+          SIG="$(cat "$PATH_ART.sig")"
+          FRAG_NAME="${OS_KEY}-x86_64" \
+          python3 - <<'PY'
+          import json, os
+          entry = {
+            "signature": os.environ["SIG"],
+            "url": os.environ["URL"],
+            "format": os.environ["FMT"],
+          }
+          with open(f"fragments/{os.environ['FRAG_NAME']}.json", "w") as f:
+              json.dump({os.environ["FRAG_NAME"]: entry}, f)
+          PY
+
+      - name: Upload manifest fragment
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: manifest-${{ matrix.os_key }}
+          path: fragments/*.json
+
+  manifest:
+    needs: [package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: manifest-*
+          path: fragments
+          merge-multiple: true
+
+      - name: Assemble latest.json
+        run: |
+          python3 - <<'PY'
+          import json, glob, os, datetime
+          platforms = {}
+          for path in glob.glob("fragments/*.json"):
+              with open(path) as f:
+                  platforms.update(json.load(f))
+          manifest = {
+              "version": os.environ["VERSION"],
+              "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "platforms": platforms,
+          }
+          with open("latest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: Upload latest.json to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.package.outputs.version }}
+        run: |
+          TAG="v$VERSION"
+          gh release upload "$TAG" latest.json --clobber --repo "$GITHUB_REPOSITORY"

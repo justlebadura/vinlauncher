@@ -120,9 +120,24 @@ pub fn simulate_manual_update_toast() {
 }
 
 fn can_self_update() -> bool {
-    // vinlauncher: personal fork — never self-update from Polyfrost releases.
-    let _ = std::env::var_os("ONECLIENT_DISABLE_AUTOUPDATE");
-    false
+    if cfg!(debug_assertions) {
+        return false;
+    }
+
+    if std::env::var_os("ONECLIENT_DISABLE_AUTOUPDATE")
+        .is_some_and(|val| val.eq_ignore_ascii_case("1"))
+    {
+        return false;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::env::var_os("APPIMAGE").is_some()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        true
+    }
 }
 
 fn check_for_update() -> anyhow::Result<Option<Update>> {
