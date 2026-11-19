@@ -209,6 +209,24 @@ async fn set_up_bundles(
         {
             tracing::warn!(cluster_id = cluster.id, error = %err, "failed to record the bundle choices for the new instance");
         }
+    } else {
+        // vinlauncher: instances created from scratch get every catalog bundle
+        // that matches their version and loader accepted automatically, so the
+        // optimize-everything treatment matches the provisioned ones
+        let archives = state
+            .bundles
+            .archives_for(content, &cluster.mc_version, cluster.mc_loader)
+            .await
+            .unwrap_or_default();
+        let choices: Vec<(String, bool)> = archives
+            .iter()
+            .map(|archive| (archive.manifest.name.clone(), true))
+            .collect();
+        if let Err(err) =
+            oneclient_content::bundles::set_bundle_choices(cluster.id, &choices, content).await
+        {
+            tracing::warn!(cluster_id = cluster.id, error = %err, "failed to accept the default bundles for the new instance");
+        }
     }
 
     let session = oneclient_events::GroupedProgressSession::start(

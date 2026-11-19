@@ -96,13 +96,13 @@ windows = { version = "=0.62.2", features = [
 winresource = "=0.1.31"
 
 [package.metadata.packager]
-product-name = "vinlauncher"
+product-name = "VinLauncher"
 identifier = "app.vinlauncher"
 category = "Game"
-publisher = "Polyfrost Inc."
-copyright = "© 2026 Polyfrost Inc."
-homepage = "https://polyfrost.org/projects/oneclient"
-long-description = "Next-generation open source Minecraft launcher"
+publisher = "VinLauncher"
+copyright = "© 2026 VinLauncher — fork personal de OneLauncher (Polyfrost), GPL-3.0"
+homepage = "https://github.com/justlebadura/vinlauncher"
+long-description = "VinLauncher: launcher de Minecraft basado en OneLauncher (Polyfrost)"
 formats = ["nsis", "app", "dmg", "deb", "appimage"]
 binaries = [{ path = "oneclient_app", main = true }]
 icons = [
