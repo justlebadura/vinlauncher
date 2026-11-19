@@ -138,9 +138,8 @@ jobs:
                  --title "VinLauncher $VERSION" --notes "VinLauncher $VERSION"
           gh release upload "$TAG" "$base.$ext" "$base.$ext.sig" --clobber --repo "$GITHUB_REPOSITORY"
 
-          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/$base.$ext"
-          KEY="${OS_KEY}-x86_64"
           FRAG_NAME="${OS_KEY}-x86_64" \
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/$base.$ext" \
           SIG="$(cat "$PATH_ART.sig")" \
           python3 - <<'PY'
           import json, os
