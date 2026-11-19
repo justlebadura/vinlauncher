@@ -140,8 +140,8 @@ jobs:
 
           URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/$base.$ext"
           KEY="${OS_KEY}-x86_64"
-          SIG="$(cat "$PATH_ART.sig")"
           FRAG_NAME="${OS_KEY}-x86_64" \
+          SIG="$(cat "$PATH_ART.sig")" \
           python3 - <<'PY'
           import json, os
           entry = {
