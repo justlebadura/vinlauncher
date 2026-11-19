@@ -68,6 +68,7 @@ jobs:
         env:
           CI: 'true'
           CARGO_PACKAGER_SIGN_PRIVATE_KEY: ${{ secrets.CARGO_PACKAGER_SIGN_PRIVATE_KEY }}
+          CARGO_PACKAGER_SIGN_PRIVATE_KEY_PASSWORD: ''
         run: cargo packager --release --formats ${{ matrix.fmt }} --verbose
 
       - name: Locate updater artifact
@@ -105,6 +106,7 @@ jobs:
         shell: bash
         env:
           CARGO_PACKAGER_SIGN_PRIVATE_KEY: ${{ secrets.CARGO_PACKAGER_SIGN_PRIVATE_KEY }}
+          CARGO_PACKAGER_SIGN_PRIVATE_KEY_PASSWORD: ''
           PATH_ART: ${{ steps.art.outputs.path }}
         run: |
           cargo packager signer sign --private-key "$CARGO_PACKAGER_SIGN_PRIVATE_KEY" --password "" "$PATH_ART"
