@@ -172,6 +172,8 @@ jobs:
           merge-multiple: true
 
       - name: Assemble latest.json
+        env:
+          VERSION: ${{ needs.package.outputs.version }}
         run: |
           python3 - <<'PY'
           import json, glob, os, datetime
