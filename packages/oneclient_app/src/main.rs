@@ -18,14 +18,14 @@ use oneclient_app::{
 use std::cell::Cell;
 use tokio::runtime::Builder;
 
-struct OneClientApp {
+struct VinLauncherApp {
     needs_location: bool,
     start_maximized: bool,
     boot_launch: Cell<Option<String>>,
     boot_share: Cell<Option<String>>,
 }
 
-impl App for OneClientApp {
+impl App for VinLauncherApp {
     fn render(&self) -> impl IntoElement {
         let needs_location = self.needs_location;
 
@@ -236,7 +236,7 @@ fn main() {
     let start_maximized = settings.start_maximized;
     let show_tray_icon = settings.show_tray_icon;
 
-    let window_config = WindowConfig::new_app(OneClientApp {
+    let window_config = WindowConfig::new_app(VinLauncherApp {
         needs_location,
         start_maximized,
         boot_launch: Cell::new(cli.launch.clone()),
@@ -257,7 +257,6 @@ fn main() {
         if oneclient_core::relocate::in_progress() {
             tracing::warn!("close request ignored, the data folder is still being moved");
         } else {
-            oneclient_app::close_chat_window();
             ipc::send(ipc::IpcCommand::Close);
         }
         CloseDecision::KeepOpen

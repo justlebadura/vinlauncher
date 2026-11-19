@@ -80,7 +80,7 @@ impl Filter {
     pub(crate) fn label(self) -> &'static str {
         match self {
             Filter::All => t("oneclient.clusters.page.filter.all"),
-            Filter::OneClient => "OneClient",
+            Filter::OneClient => "vinlauncher",
             Filter::Custom => t("oneclient.clusters.page.filter.custom"),
             Filter::Modpacks => t("oneclient.clusters.page.filter.modpacks"),
         }
@@ -435,7 +435,7 @@ impl Component for Clusters {
                                     .spacing(22.)
                                     .append_children((!shown_lines.is_empty()).then(|| {
                                         section(
-                                            "OneClient",
+                                            "vinlauncher",
                                             t("oneclient.clusters.page.section.oneclient"),
                                             fixed_grid(line_cards, columns, item_height, gap),
                                         )
@@ -717,6 +717,7 @@ struct Sidebar {
     width: f32,
     cluster_id: i64,
     uses_bundles: bool,
+    stage: oneclient_cluster::ClusterStage,
     art: DynamicArt,
     type_label: &'static str,
     title: String,
@@ -733,8 +734,9 @@ impl Sidebar {
             width,
             cluster_id: cluster.id,
             uses_bundles: cluster.uses_bundles(),
+            stage: cluster.stage,
             art: DynamicArt::for_cluster(cluster).max_edge(ART_PREVIEW_EDGE),
-            type_label: "OneClient",
+            type_label: "vinlauncher",
             title: cluster.name.clone(),
             subtitle: cluster_caption(cluster),
             description: None,
@@ -799,12 +801,14 @@ impl Component for Sidebar {
         let mut sidebar_height = use_state(|| 0f32);
         let mut active_id = use_active_cluster_id();
         let dispatch = use_dispatch();
+        let launch_dispatch = dispatch.clone();
         let game = use_game_snapshot();
         let launcher = use_launcher();
 
         let cluster_id = self.cluster_id;
         let syncing = launch_syncing(&launcher, self.uses_bundles);
         let shared_dir_taken = use_shared_dir_taken(cluster_id);
+        let install = self.stage != oneclient_cluster::ClusterStage::Ready;
         let art_height = art_height_for(*sidebar_height.read());
         let top_padding = if art_height.is_some() { 4. } else { 22. };
 
@@ -879,8 +883,21 @@ impl Component for Sidebar {
                             .child(play_button(
                                 cluster_id,
                                 dispatch,
-                                launch_button_state(&game, cluster_id, syncing, shared_dir_taken),
+                                launch_button_state(
+                                    &game,
+                                    cluster_id,
+                                    syncing,
+                                    shared_dir_taken,
+                                    Some(self.stage),
+                                ),
+                                install,
                             ))
+                            .maybe_child(install.then(|| {
+                                Button::new()
+                                    .secondary()
+                                    .on_press(move |_| launch_dispatch.launch_cluster(cluster_id))
+                                    .text(t("oneclient.app.launch.launch"))
+                            }))
                             .child(
                                 Button::new()
                                     .secondary()
@@ -984,6 +1001,7 @@ fn play_button(
     cluster_id: i64,
     dispatch: crate::Actions,
     state: (&'static str, bool),
+    install: bool,
 ) -> impl IntoElement {
     let (label, enabled) = state;
     Button::new()
@@ -992,7 +1010,11 @@ fn play_button(
         .enabled(enabled)
         .on_press(move |_| {
             if enabled {
-                dispatch.launch_cluster(cluster_id);
+                if install {
+                    dispatch.install_cluster(cluster_id);
+                } else {
+                    dispatch.launch_cluster(cluster_id);
+                }
             }
         })
         .text(label)

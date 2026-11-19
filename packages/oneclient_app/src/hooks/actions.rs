@@ -45,16 +45,16 @@ use tokio::sync::mpsc;
 use crate::components::IconType;
 use crate::hooks::{GraphicsBackendQuery, PackageUpdatesQuery};
 use crate::i18n::{t, tf};
+use crate::install::IncompatibleMode;
 use crate::launcher::off_ui;
 use crate::notifications::{
     BundleChoices, ClusterUpdateSummary, NotificationAction, NotificationSpec, OptionalModRef,
     OptionalModsGroup, OptionalModsOutcome, PackageUpdateGroup, PendingPrompt,
 };
 use crate::state::{
-    AppChannel, AppState, AsyncStatus, FlaggedInstallPrompt, IncompatibleInstallPrompt, MissingModInstall,
-    RelocationState,
+    AppChannel, AppState, AsyncStatus, FlaggedInstallPrompt, IncompatibleInstallPrompt,
+    MissingModInstall, RelocationState,
 };
-use crate::install::IncompatibleMode;
 use crate::{invalidate_java_queries, launcher};
 
 /// Over-disabling is the cheaper mistake a dead button beats a second game
@@ -138,8 +138,6 @@ pub enum PumpSignal {
     Reconcile,
     PauseToasts,
     ResumeToasts,
-    Chat(super::chat::ChatJob),
-    JoinInvite(i32),
 }
 
 #[derive(Clone)]
@@ -404,12 +402,6 @@ impl Actions {
 
     pub fn decline_tos(&self) {
         oneclient_common::consent::decline();
-        crate::view::chat::close_chat_window();
-        {
-            let mut guard = self.station.clone().write_channel(AppChannel::Social);
-            guard.social_open = false;
-            guard.social_popped_notice = false;
-        }
 
         if let Some(updated) = self.mutate_settings(|settings| {
             settings.declined_tos = true;
@@ -815,43 +807,6 @@ impl Actions {
             .control_center_open = false;
     }
 
-    pub fn toggle_social(&self) {
-        let open = self.station.peek().social_open;
-        let mut guard = self.station.clone().write_channel(AppChannel::Social);
-        guard.social_open = !open;
-        guard.social_popped_notice = false;
-    }
-
-    pub fn close_social(&self) {
-        self.station
-            .clone()
-            .write_channel(AppChannel::Social)
-            .social_open = false;
-    }
-
-    pub fn pop_out_social(&self) {
-        {
-            let mut guard = self.station.clone().write_channel(AppChannel::Social);
-            guard.social_open = false;
-            guard.social_popped_notice = true;
-        }
-        crate::view::chat::open_chat_window();
-    }
-
-    pub fn dock_social(&self) {
-        crate::view::chat::close_chat_window();
-        let mut guard = self.station.clone().write_channel(AppChannel::Social);
-        guard.social_open = true;
-        guard.social_popped_notice = false;
-    }
-
-    pub fn dismiss_social_notice(&self) {
-        self.station
-            .clone()
-            .write_channel(AppChannel::Social)
-            .social_popped_notice = false;
-    }
-
     pub fn close_notification_center(&self) {
         self.with_engine(|state| state.center_open = false);
     }
@@ -859,12 +814,6 @@ impl Actions {
     pub fn clear_notification_inbox(&self) {
         self.with_engine(|state| {
             state.notifications.clear_inbox(&mut state.inbox);
-        });
-    }
-
-    pub fn clear_chat_notices(&self) {
-        self.with_engine(|state| {
-            state.notifications.clear_chat_notices(&mut state.inbox);
         });
     }
 
@@ -1164,11 +1113,45 @@ impl Actions {
         self.launch_with(cluster_id, None);
     }
 
-    pub fn launch_cluster_for_invite(&self, cluster_id: ClusterId, invite_id: i32) {
-        self.launch_with(
-            cluster_id,
-            Some(crate::invite_join::join_jvm_arg(invite_id)),
-        );
+    /// vinlauncher: install a cluster without launching the game. The primary
+    /// button shows this for instances that were never installed.
+    pub fn install_cluster(&self, cluster_id: ClusterId) {
+        if let Some((title, body)) = cluster_busy(cluster_id) {
+            self.notify(title).body(body).send();
+            return;
+        }
+        let claimed = self
+            .station
+            .clone()
+            .write_channel(AppChannel::Game)
+            .game
+            .begin_launch(cluster_id);
+        if !claimed {
+            return;
+        }
+
+        let station = self.station;
+        spawn_in_window(async move {
+            let Ok(state) = launcher::state() else { return };
+            let events = state.services.events.clone();
+            events.game_stage(cluster_id, oneclient_events::LaunchStage::Downloading);
+
+            match oneclient_core::prepare_cluster_locked(&state, cluster_id, false, true, true, None)
+                .await
+            {
+                Ok(_) => events.game_stage(cluster_id, oneclient_events::LaunchStage::Exited),
+                Err(err) => {
+                    tracing::error!(cluster_id, "install failed: {err:#}");
+                    events.game_failed(cluster_id, format!("{err:#}"));
+                }
+            }
+
+            station
+                .clone()
+                .write_channel(AppChannel::Game)
+                .game
+                .finish_launch(cluster_id);
+        });
     }
 
     fn launch_with(&self, cluster_id: ClusterId, extra_jvm_arg: Option<String>) {

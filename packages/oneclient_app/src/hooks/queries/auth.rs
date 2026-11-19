@@ -6,9 +6,8 @@ use freya::query::{
 };
 use oneclient_auth::{AccountKind, MicrosoftLoginSession, MinecraftAccount};
 use oneclient_core::LauncherError;
+use oneclient_mc::SkinVariant;
 use uuid::Uuid;
-
-const SIGN_OUT_LEAVE_LIMIT: std::time::Duration = std::time::Duration::from_secs(10);
 
 static HANDLED_LOGIN_CODE: Mutex<Option<String>> = Mutex::new(None);
 
@@ -235,28 +234,6 @@ impl MutationCapability for AddOfflineAccountMutation {
     }
 }
 
-async fn leave_party_before_sign_out(auth: std::sync::Arc<oneclient_auth::AuthService>, id: Uuid) {
-    let left = crate::launcher::off_ui(async move {
-        tokio::time::timeout(SIGN_OUT_LEAVE_LIMIT, async {
-            let account = auth
-                .account_for_launch(id)
-                .await
-                .map_err(|err| err.to_string())?;
-            oneclient_polyplus::party::leave_for_sign_out(&account)
-                .await
-                .map_err(|err| err.to_string())
-        })
-        .await
-        .map_err(|_| "timed out".to_string())
-        .and_then(|left| left)
-    })
-    .await;
-
-    if let Err(err) = left {
-        tracing::warn!(%id, "could not leave the party before signing out: {err}");
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct RemoveAccountMutation;
 
@@ -272,7 +249,6 @@ impl MutationCapability for RemoveAccountMutation {
 
     async fn run(&self, keys: &Self::Keys) -> Result<Self::Ok, Self::Err> {
         let state = crate::launcher::state()?;
-        leave_party_before_sign_out(state.auth.clone(), keys.id).await;
         Ok(state.auth.remove_account(keys.id).await?)
     }
 
@@ -360,6 +336,7 @@ impl MutationCapability for RefreshAllAccountsMutation {
 pub type UseSetDefaultAccount = UseMutation<SetDefaultAccountMutation>;
 pub type UseRemoveAccount = UseMutation<RemoveAccountMutation>;
 pub type UseRefreshAccount = UseMutation<RefreshAccountMutation>;
+pub type UseChangeSkin = UseMutation<ChangeSkinMutation>;
 
 pub fn use_begin_microsoft_login() -> UseMutation<BeginMicrosoftLoginMutation> {
     use_mutation(Mutation::new(BeginMicrosoftLoginMutation))
@@ -395,6 +372,73 @@ pub fn use_refresh_account() -> UseMutation<RefreshAccountMutation> {
 
 pub fn use_refresh_all_accounts() -> UseMutation<RefreshAllAccountsMutation> {
     use_mutation(Mutation::new(RefreshAllAccountsMutation))
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ChangeSkinKeys {
+    pub id: Uuid,
+    pub png: Vec<u8>,
+    pub variant: SkinVariant,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ChangeSkinMutation;
+
+impl MutationCapability for ChangeSkinMutation {
+    type Ok = ();
+    type Err = LauncherError;
+    type Keys = ChangeSkinKeys;
+
+    async fn run(&self, keys: &Self::Keys) -> Result<Self::Ok, Self::Err> {
+        let state = crate::launcher::state()?;
+        let account = state
+            .auth
+            .get_account(keys.id)
+            .await
+            .ok_or_else(|| LauncherError::Minecraft("account not found".to_string()))?;
+
+        match account.kind {
+            AccountKind::Microsoft => {
+                if account.signed_out || account.access_token.is_empty() {
+                    return Err(LauncherError::Minecraft(
+                        "account needs sign-in".to_string(),
+                    ));
+                }
+
+                let profile = oneclient_mc::upload_skin(
+                    &state.services.requester,
+                    &account.access_token,
+                    keys.png.clone(),
+                    keys.variant.clone(),
+                )
+                .await?;
+                oneclient_mc::store_profile_view(&account.id.to_string(), profile).await;
+            }
+            AccountKind::Offline => {
+                // Offline accounts cannot upload to Mojang: keep the skin
+                // local to the launcher only
+                let dir = oneclient_common::paths::skins_dir()?;
+                let path = dir.join(format!("{}.png", account.username));
+                polyio::create_dir_all(&dir).await?;
+                polyio::write(&path, &keys.png).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn on_settled(&self, keys: &Self::Keys, result: &Result<Self::Ok, Self::Err>) {
+        if result.is_ok() {
+            invalidate_auth_queries(Some(keys.id)).await;
+            QueriesStorage::<super::player_profile::FetchPlayerProfileQuery>::invalidate_all()
+                .await;
+            QueriesStorage::<super::skin::LocalSkinQuery>::invalidate_all().await;
+        }
+    }
+}
+
+pub fn use_change_skin() -> UseMutation<ChangeSkinMutation> {
+    use_mutation(Mutation::new(ChangeSkinMutation))
 }
 
 /// True before it has ever been run as well as while running For button

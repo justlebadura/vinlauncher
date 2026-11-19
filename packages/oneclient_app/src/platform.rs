@@ -249,7 +249,7 @@ pub mod tray {
     #[cfg(target_os = "macos")]
     const HELP_URL: &str = "https://discord.gg/polyfrost";
     #[cfg(target_os = "macos")]
-    const REPORT_URL: &str = "https://github.com/Polyfrost/OneLauncher/issues/new/choose";
+    const REPORT_URL: &str = "https://example.invalid/vinlauncher/issues";
 
     #[cfg(target_os = "macos")]
     const ICON: &[u8] = include_bytes!("../icons/tray.png");

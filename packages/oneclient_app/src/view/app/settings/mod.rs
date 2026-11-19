@@ -1,6 +1,8 @@
 mod accounts;
 mod appearance;
 
+mod change_skin;
+
 mod apis;
 mod changelog;
 mod developer;
@@ -14,6 +16,7 @@ mod theme_editor;
 use freya::prelude::*;
 
 pub use accounts::SettingsAccounts;
+pub(crate) use change_skin::ChangeSkinPopup;
 pub use apis::SettingsApis;
 pub use appearance::SettingsAppearance;
 pub(crate) use appearance::theme_cards;

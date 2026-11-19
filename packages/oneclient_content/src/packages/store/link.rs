@@ -314,6 +314,13 @@ pub async fn try_link_materialized(
         return LiveSync::Deferred;
     }
 
+    // vinlauncher: rebrand the materialized copy, not the cached artifact
+    if content_type == ContentType::Mod && file_name.ends_with(".jar")
+        && let Err(err) = crate::branding::patch_mod_jar(&dest).await
+    {
+        tracing::debug!(file = file_name, error = %err, "could not rebrand mod jar");
+    }
+
     loaded.entries.retain(|entry| entry.path != relative);
     loaded.entries.push(manifest::ManifestEntry {
         path: relative,

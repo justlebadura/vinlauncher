@@ -304,7 +304,7 @@ fn path_content_width(path: &str) -> f32 {
 #[derive(Clone, PartialEq)]
 struct PendingRemove {
     path: String,
-    /// Whether the files live in OneClient's own java dir, which is the only
+    /// Whether the files live in vinlauncher's own java dir, which is the only
     /// case where removal takes them off disk
     managed: bool,
 }

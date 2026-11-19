@@ -249,6 +249,7 @@ fn task_row(task: &crate::notifications::TaskView) -> impl IntoElement {
                 .text(task.label.clone())
                 .font_size(text_size(11.))
                 .max_lines(1)
+                .text_overflow(TextOverflow::Ellipsis)
                 .width(Size::flex(1.0))
                 .color(colors::fg_primary()),
         )
@@ -481,10 +482,6 @@ pub(crate) fn run_action(
             dispatch.open_cluster_update(summaries.clone());
         }
         NotificationActionKind::OpenUrl(url) => confirm_link.set(Some(url.clone())),
-        NotificationActionKind::OpenChat(group_id) => {
-            dispatch.close_notification_center();
-            dispatch.show_chat(*group_id);
-        }
     }
 }
 

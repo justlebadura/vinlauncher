@@ -125,7 +125,13 @@ impl Component for ClusterShell {
             .as_ref()
             .is_none_or(|c| crate::view::app::cluster::supports_datapacks(&c.mc_version));
         let show_mod_tabs = cluster.as_ref().is_none_or(|c| !c.lacks_mod_loader());
-        let launch_state = launch_button_state(&game, cluster_id, syncing, shared_dir_taken);
+        let launch_state = launch_button_state(
+            &game,
+            cluster_id,
+            syncing,
+            shared_dir_taken,
+            cluster.as_ref().map(|c| c.stage),
+        );
         let bisecting = use_bisect(cluster_id).is_some();
         let mut question_hidden = use_state(|| false);
         let mut sharing = use_state(|| false);

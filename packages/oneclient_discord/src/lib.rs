@@ -54,12 +54,11 @@ pub struct DiscordRpc {
 
 impl DiscordRpc {
     pub fn spawn(enabled: bool) -> Self {
-        let (tx, rx) = mpsc::channel();
-
-        std::thread::Builder::new()
-            .name("discord-rpc".to_owned())
-            .spawn(move || Worker::new(enabled).run(&rx))
-            .expect("failed to spawn the Discord RPC thread");
+        // vinlauncher: the Discord application id is Polyfrost's, so Rich Presence
+        // would brand itself "OneLauncher" in Discord. The fork runs without RPC;
+        // commands are dropped by keeping no receiver alive.
+        let _ = enabled;
+        let (tx, _rx) = mpsc::channel();
 
         Self { tx }
     }
@@ -169,7 +168,7 @@ impl Worker {
             .assets(
                 Assets::new()
                     .large_image(LARGE_IMAGE)
-                    .large_text("OneClient"),
+                    .large_text("vinlauncher"),
             )
             .buttons(vec![Button::new("Website", "https://polyfrost.org/")]);
 

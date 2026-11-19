@@ -1,5 +1,4 @@
 mod code;
-pub(crate) mod http;
 mod ledger;
 mod linked;
 mod local;
@@ -8,12 +7,10 @@ mod store;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use oneclient_auth::AuthService;
 use oneclient_content::modpacks::{self, SHARE_EXTENSION, SHARE_FORMAT, ShareExportReport};
 use oneclient_events::GroupedProgressSession;
 
 pub use code::{APP_LINK_HOST, CODE_LENGTH, SHARE_LINK_BASE, SHARE_LINK_HOSTS, ShareCode};
-pub use http::HttpShareStore;
 pub use ledger::{LedgerEntry, PushState, ShareLedger};
 pub(crate) use linked::strip_linked;
 pub use linked::{
@@ -78,11 +75,14 @@ pub fn incoming_dir() -> LauncherResult<PathBuf> {
     Ok(sharing_dir()?.join("incoming"))
 }
 
-pub fn default_store(auth: Arc<AuthService>) -> Arc<dyn ShareStore> {
-    match std::env::var_os(SHARE_DIR_ENV).filter(|dir| !dir.is_empty()) {
-        Some(dir) => Arc::new(LocalShareStore::new(PathBuf::from(dir))),
-        None => Arc::new(HttpShareStore::new(auth)),
-    }
+pub fn default_store() -> Arc<dyn ShareStore> {
+    let dir = std::env::var_os(SHARE_DIR_ENV)
+        .filter(|dir| !dir.is_empty())
+        .map_or_else(
+            || sharing_dir().unwrap_or_else(|_| PathBuf::from("shares")),
+            PathBuf::from,
+        );
+    Arc::new(LocalShareStore::new(dir))
 }
 
 pub fn default_ledger() -> LauncherResult<ShareLedger> {
@@ -235,7 +235,7 @@ pub async fn describe_payload(path: &Path) -> LauncherResult<ShareMeta> {
         .into());
     }
     let share = modpacks::read_cluster_share(path).await?.ok_or_else(|| {
-        SharingError::Corrupt("the file is not a OneClient instance export".to_string())
+        SharingError::Corrupt("the file is not a vinlauncher instance export".to_string())
     })?;
     let sha512 = polyio::sha512_file(path).await?;
     Ok(ShareMeta {
@@ -512,7 +512,7 @@ pub(crate) fn check_meta(meta: &ShareMeta) -> Result<(), SharingError> {
     }
     if meta.format > SHARE_FORMAT {
         return Err(SharingError::Corrupt(format!(
-            "it was shared from a newer OneClient (format {}). Update OneClient to import it.",
+            "it was shared from a newer vinlauncher (format {}). Update vinlauncher to import it.",
             meta.format
         )));
     }

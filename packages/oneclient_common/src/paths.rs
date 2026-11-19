@@ -6,13 +6,13 @@ use crate::domain::{ContentType, ProviderId};
 use crate::error::{PathsError, PathsResult};
 
 const QUALIFIER: &str = "org";
-const ORGANIZATION: &str = "Polyfrost";
+const ORGANIZATION: &str = "vinlauncher";
 
 #[cfg(not(debug_assertions))]
-const APPLICATION: &str = "OneClient";
+const APPLICATION: &str = "vinlauncher";
 
 #[cfg(debug_assertions)]
-const APPLICATION: &str = "OneClient-dev";
+const APPLICATION: &str = "vinlauncher-dev";
 
 pub const SETTINGS_FILE: &str = "settings.json";
 pub const DATABASE_FILE: &str = "user_data.db";
@@ -110,6 +110,11 @@ pub fn auth_file() -> PathsResult<PathBuf> {
 
 pub fn themes_dir() -> PathsResult<PathBuf> {
     Ok(config_dir()?.join("themes"))
+}
+
+/// Locally saved skins for offline accounts only Mojang can host the rest
+pub fn skins_dir() -> PathsResult<PathBuf> {
+    Ok(config_dir()?.join("skins"))
 }
 
 pub fn logs_dir() -> PathsResult<PathBuf> {

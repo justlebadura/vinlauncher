@@ -45,7 +45,7 @@ pub fn cloud_engine() -> Option<Arc<CloudSync>> {
     }
     let state = launcher::state().ok()?;
     ENGINE
-        .get_or_init(|| match CloudSync::from_defaults(state.auth.clone()) {
+        .get_or_init(|| match CloudSync::from_defaults() {
             Ok(engine) => Some(Arc::new(engine.with_busy(super::modpack_job_running))),
             Err(err) => {
                 tracing::warn!(error = %err, "cloud sync is unavailable");

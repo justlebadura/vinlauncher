@@ -3,11 +3,10 @@ use freya::router::*;
 
 use crate::components::{
     AccountSwitcher, BlockedDownloadsPopup, BundleChoicesPopup, ClusterUpdatePopup, ControlCenter,
-    FlaggedInstallPopup, GenericPromptOverlay, IncompatibleInstallPopup, InviteJoinPopup, JavaPromptOverlay,
-    MicrosoftJavaPromptOverlay,
-    ModpackConfirmPopup, NotificationCenter, OptionalModsPopup, PackageUpdatePopup,
-    ReleaseMigrationPopup, SplashCurtain, StatusBar, Toasts, TooltipHost, UnpublishedImportPopup,
-    UpdatePromptOverlay, use_provide_tooltips,
+    FlaggedInstallPopup, GenericPromptOverlay, IncompatibleInstallPopup, JavaPromptOverlay,
+    MicrosoftJavaPromptOverlay, ModpackConfirmPopup, NotificationCenter, OptionalModsPopup,
+    PackageUpdatePopup, ReleaseMigrationPopup, SplashCurtain, StatusBar, Toasts, TooltipHost,
+    UnpublishedImportPopup, UpdatePromptOverlay, use_provide_tooltips,
 };
 use crate::hooks::{SplashState, use_provide_overlay_claims, use_provide_splash};
 use crate::layout::{HomeArtPrefetch, PendingLaunchDriver, use_ipc_commands};
@@ -39,7 +38,6 @@ impl Component for RootLayout {
                     .height(Size::fill())
                     .child(Outlet::<Route>::new()),
             )
-            .child(crate::view::chat::SocialOverlay)
             .child(NotificationCenter)
             .child(AccountSwitcher)
             .child(ControlCenter)
@@ -59,7 +57,6 @@ impl Component for RootLayout {
             .child(FlaggedInstallPopup)
             .child(IncompatibleInstallPopup)
             .child(ReleaseMigrationPopup)
-            .child(InviteJoinPopup)
             .child(StatusBar)
             .child(TooltipHost)
             .child(SplashCurtain)

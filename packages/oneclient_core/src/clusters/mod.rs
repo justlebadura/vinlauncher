@@ -31,7 +31,7 @@ pub(crate) use modpack_import::flag_pack_mods;
 pub use prepare::{
     estimate_cluster_download, prepare_cluster, prepare_cluster_locked, required_java_major,
 };
-pub use provision::{ensure_from_bundles, ensure_from_versions};
+pub use provision::ensure_from_bundles;
 pub use release_migration::{
     OfferLookup, ReleaseMigrationOffer, can_migrate_manually, copy_configs, manual_migration_offer,
     rank_migration_sources, record_new_versions, release_migration_offer,

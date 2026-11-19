@@ -5,10 +5,8 @@ use std::time::{Duration, Instant};
 use bytes::Bytes;
 use freya::engine::prelude::{SkData, SkImage, SkRect};
 use freya::prelude::*;
-use oneclient_polyplus::api;
-use plusrenderer::animation::Loop;
 use plusrenderer::build::Buffers;
-use plusrenderer::{Arms, BodySlot, Camera, Scene, bundle};
+use plusrenderer::{Arms, Camera, Scene, bundle};
 use skia_safe::vertices::VertexMode;
 use skia_safe::{
     BlendMode, Canvas, FilterMode, ImageInfo, Matrix, MipmapMode, Paint, Point, SamplingOptions,
@@ -16,18 +14,14 @@ use skia_safe::{
 };
 
 use crate::hooks::use_player_skin;
-use crate::hooks::wardrobe::CosmeticBundle;
 
 const PLAYER: usize = 0;
 const CAPE: usize = 1;
-const FIRST_COSMETIC: usize = 2;
 const CAM_DIST: f32 = 52.;
 const MODEL_CENTER_Y: f32 = 16.;
 const DRAG_SENSITIVITY: f32 = 0.01;
 const PITCH_LIMIT: f32 = 1.3;
-// Every animated frame repaints the whole window, so cosmetics animate slower than the display.
 const ANIMATION_FRAME: Duration = Duration::from_millis(33);
-const EMOTE_PAUSE: f32 = 1.;
 
 #[derive(PartialEq, Clone)]
 pub struct PlayerModel {
@@ -38,9 +32,6 @@ pub struct PlayerModel {
     pitch: f32,
     skin: Option<(Bytes, bool)>,
     cape: Option<Bytes>,
-    cosmetics: Vec<(api::BodySlot, CosmeticBundle)>,
-    emote: Option<Bytes>,
-    particle_color: Option<i32>,
     zoom: f32,
     focus_y: f32,
     draggable: bool,
@@ -56,9 +47,6 @@ impl PlayerModel {
             pitch: -0.1,
             skin: None,
             cape: None,
-            cosmetics: Vec::new(),
-            emote: None,
-            particle_color: None,
             zoom: 1.0,
             focus_y: 0.0,
             draggable: true,
@@ -90,21 +78,6 @@ impl PlayerModel {
         self
     }
 
-    pub fn cosmetics(mut self, cosmetics: Vec<(api::BodySlot, CosmeticBundle)>) -> Self {
-        self.cosmetics = cosmetics;
-        self
-    }
-
-    pub fn emote(mut self, emote: Option<Bytes>) -> Self {
-        self.emote = emote;
-        self
-    }
-
-    pub fn particle_color(mut self, particle_color: Option<i32>) -> Self {
-        self.particle_color = particle_color;
-        self
-    }
-
     pub fn width(mut self, width: Size) -> Self {
         self.width = width;
         self
@@ -132,8 +105,6 @@ struct Look {
     skin: Bytes,
     slim: bool,
     cape: Option<Bytes>,
-    cosmetics: Vec<(api::BodySlot, CosmeticBundle)>,
-    emote: Option<Bytes>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -145,7 +116,6 @@ struct Frame {
     seconds: f32,
     size: (f32, f32),
     scale: f32,
-    tint: Option<u32>,
 }
 
 #[derive(Default)]
@@ -153,10 +123,7 @@ struct Player {
     look: Option<Look>,
     scene: Scene,
     textures: Vec<Option<SkImage>>,
-    aura: Option<usize>,
     start: Option<Instant>,
-    /// When a one-shot emote plays again, and how often.
-    replay: Option<(f32, f32)>,
     surface: Option<Surface>,
     frame: Option<(Frame, SkImage)>,
 }
@@ -197,8 +164,7 @@ impl Player {
             offscreen.save();
             offscreen.scale((frame.scale, frame.scale));
             offscreen.translate((0., (h - fit) / 2.));
-            let tint = self.aura.zip(frame.tint);
-            draw(offscreen, buffers, &self.textures, tint);
+            draw(offscreen, buffers, &self.textures);
             offscreen.restore();
             self.frame = Some((frame, surface.image_snapshot()));
         }
@@ -212,92 +178,17 @@ impl Player {
         self.start.map_or(0., |start| start.elapsed().as_secs_f32())
     }
 
-    /// Plays a finished one-shot emote again, returning whether it did.
-    fn replay_emote(&mut self, now: f32) -> bool {
-        let Some((at, period)) = self.replay.filter(|(at, _)| now >= *at) else {
-            return false;
-        };
-        self.scene.play(PLAYER, at);
-        self.replay = Some((at + period, period));
-        true
-    }
-
     fn load(&mut self, look: Look) {
         let mut scene = Scene::default();
         let mut textures = vec![decode(&look.skin), None];
 
         scene.load_player(PLAYER, if look.slim { Arms::Slim } else { Arms::Wide });
-        self.replay = None;
-        self.aura = None;
-        if let Some(json) = look.emote.as_deref().and_then(utf8) {
-            match scene.load_animation(PLAYER, json) {
-                Ok(()) => scene.play(PLAYER, 0.),
-                Err(err) => tracing::warn!("emote failed to load: {err}"),
-            }
-            let animation = plusrenderer::animation::parse(json, &mut Default::default())
-                .ok()
-                .and_then(|animations| animations.into_iter().next());
-            if let Some(animation) = animation.filter(|a| a.loop_mode == Loop::Once) {
-                let period = animation.length + EMOTE_PAUSE;
-                self.replay = Some((period, period));
-            }
-        }
 
         if let Some(cape) = look.cape.as_ref().and_then(decode) {
             let [w, h] = [cape.width() as u32, cape.height() as u32];
             let (frames, frame_seconds) = bundle::cape_sheet([w, w / 2], [w, h], "cape.sheet");
             scene.load_cape(CAPE, frames, frame_seconds);
             textures[CAPE] = Some(cape);
-        }
-
-        for (index, (slot, cosmetic)) in look.cosmetics.iter().enumerate() {
-            let index = FIRST_COSMETIC + index;
-            let Some(body) = body_slot(*slot) else {
-                continue;
-            };
-            let Some(geometry) = cosmetic.geometry.as_deref().and_then(utf8) else {
-                continue;
-            };
-            let pet = cosmetic
-                .pet
-                .as_deref()
-                .and_then(|json| serde_json::from_slice::<serde_json::Value>(json).ok());
-            // Flying and walking pets roam beside the player in game; only shoulder pets attach.
-            if pet.as_ref().is_some_and(|pet| {
-                !pet["archetype"]
-                    .as_str()
-                    .is_some_and(|kind| kind.eq_ignore_ascii_case("shoulder"))
-            }) {
-                continue;
-            }
-            let model = match plusrenderer::bedrock::parse_one(geometry) {
-                Ok(model) => model,
-                Err(err) => {
-                    tracing::warn!("cosmetic geometry failed to parse: {err}");
-                    continue;
-                }
-            };
-
-            let texture = cosmetic.texture.as_ref().and_then(decode);
-            let size = texture
-                .as_ref()
-                .map(|image| [image.width() as u32, image.height() as u32]);
-            let anchor = pet.as_ref().and_then(|pet| pet["anchor"].as_str());
-            scene.load_cosmetic(index, model, body, anchor, size);
-            if body == BodySlot::Aura {
-                self.aura = Some(index);
-            }
-            if let Some(scale) = pet.as_ref().and_then(|pet| pet["scale"].as_f64()) {
-                scene.set_scale(index, scale as f32);
-            }
-            if let Some(json) = cosmetic.animation.as_deref().and_then(utf8)
-                && scene.load_animation(index, json).is_ok()
-            {
-                scene.play(index, 0.);
-            }
-
-            textures.resize(index + 1, None);
-            textures[index] = texture;
         }
 
         self.scene = scene;
@@ -320,8 +211,6 @@ impl Component for PlayerModel {
             skin,
             slim,
             cape: self.cape.clone(),
-            cosmetics: self.cosmetics.clone(),
-            emote: self.emote.clone(),
         };
         {
             let mut player = player.borrow_mut();
@@ -344,9 +233,8 @@ impl Component for PlayerModel {
                     loop {
                         tokio::time::sleep(ANIMATION_FRAME).await;
                         let mut player = player.borrow_mut();
-                        let now = player.seconds();
-                        if player.replay_emote(now) || player.scene.is_animating() {
-                            seconds.set(now);
+                        if player.scene.is_animating() {
+                            seconds.set(player.seconds());
                         }
                     }
                 });
@@ -382,7 +270,6 @@ impl Component for PlayerModel {
         let distance = CAM_DIST / self.zoom;
         let target_y = MODEL_CENTER_Y + self.focus_y;
         let (cur_yaw, cur_pitch, now) = (yaw(), pitch(), seconds());
-        let tint = self.particle_color.map(|color| color as u32);
         let draw_player = player.clone();
 
         let render_cb = RenderCallback::new(move |ctx: &mut FillRenderContext| {
@@ -404,7 +291,6 @@ impl Component for PlayerModel {
                     seconds: now,
                     size: (w, h),
                     scale: canvas.local_to_device_as_3x3().scale_x(),
-                    tint,
                 },
             );
         });
@@ -460,29 +346,11 @@ fn decode(bytes: &Bytes) -> Option<SkImage> {
     Some(image.make_raster_image(None, None).unwrap_or(image))
 }
 
-fn body_slot(slot: api::BodySlot) -> Option<BodySlot> {
-    Some(match slot {
-        api::BodySlot::Cape => BodySlot::Cape,
-        api::BodySlot::Backpack => BodySlot::Backpack,
-        api::BodySlot::Glasses => BodySlot::Glasses,
-        api::BodySlot::Wings => BodySlot::Wings,
-        api::BodySlot::LeftHand => BodySlot::LeftHand,
-        api::BodySlot::RightHand => BodySlot::RightHand,
-        api::BodySlot::Hat => BodySlot::Hat,
-        api::BodySlot::Aura => BodySlot::Aura,
-        api::BodySlot::Boots => BodySlot::Boots,
-        api::BodySlot::Shoulder => BodySlot::Shoulder,
-        api::BodySlot::Pet => BodySlot::Pet,
-        api::BodySlot::Unknown => return None,
-    })
-}
-
 // plusrenderer-skia's `draw`, on the Skia build Freya links (the crate pins a newer one).
 fn draw(
     canvas: &Canvas,
     buffers: &Buffers,
     textures: &[Option<SkImage>],
-    tint: Option<(usize, u32)>,
 ) {
     let points = |v: &[f32]| {
         v.as_chunks::<2>()
@@ -517,26 +385,7 @@ fn draw(
         };
         let range = first as usize..=last as usize;
         let local: Vec<u16> = indices.iter().map(|&i| i - first).collect();
-        let tinted: Vec<skia_safe::Color>;
-        let run_colors = match tint {
-            Some((index, tint)) if run.texture as usize == index => {
-                let tint = skia_safe::Color::new(tint);
-                let mul = |a: u8, b: u8| (u16::from(a) * u16::from(b) / 255) as u8;
-                tinted = colors[range.clone()]
-                    .iter()
-                    .map(|c| {
-                        skia_safe::Color::from_argb(
-                            mul(c.a(), tint.a()),
-                            mul(c.r(), tint.r()),
-                            mul(c.g(), tint.g()),
-                            mul(c.b(), tint.b()),
-                        )
-                    })
-                    .collect();
-                &tinted[..]
-            }
-            _ => &colors[range.clone()],
-        };
+        let run_colors = &colors[range.clone()];
         let vertices = Vertices::new_copy(
             VertexMode::Triangles,
             &positions[range.clone()],

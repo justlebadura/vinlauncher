@@ -321,7 +321,7 @@ pub fn pixel_icon_size(size: f32, cells: f32) -> f32 {
 pub fn wordmark(width: f32, height: f32, color: Color) -> Element {
     if colors::active_theme().pixel_icons {
         return label()
-            .text("ONECLIENT")
+            .text("VINLAUNCHER")
             .font_family(font())
             .font_weight(FontWeight::BOLD)
             .font_size(text_size(height * 0.83))

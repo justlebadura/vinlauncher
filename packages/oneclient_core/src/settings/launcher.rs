@@ -88,7 +88,6 @@ pub struct LauncherSettings {
     pub curseforge_api_key: Option<String>,
     pub custom_api_endpoint: Option<String>,
     pub custom_meta_url_base: Option<String>,
-    pub custom_plus_endpoint: Option<String>,
     pub data_dir: Option<PathBuf>,
     pub previous_data_dir: Option<PathBuf>,
 }
@@ -122,7 +121,7 @@ impl Default for LauncherSettings {
             log_debug: false,
             auto_update: true,
             crash_reporting: true,
-            discord_enabled: true,
+            discord_enabled: false,
             enable_gamemode: false,
             max_concurrent_requests: 25,
             global_game_settings: GameSettingsProfile::default_global_profile(),
@@ -152,7 +151,6 @@ impl Default for LauncherSettings {
             curseforge_api_key: None,
             custom_api_endpoint: None,
             custom_meta_url_base: None,
-            custom_plus_endpoint: None,
             data_dir: None,
             previous_data_dir: None,
         }

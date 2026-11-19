@@ -4,7 +4,7 @@ use oneclient_net::RequestClient;
 use oneclient_net::{EtagPolicy, fetch_cached};
 
 const CHANGELOG_URL: &str =
-    "https://github.com/Polyfrost/OneLauncher/releases/latest/download/changelog.json";
+    "https://example.invalid/vinlauncher/changelog.json";
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct ChangelogEntry {

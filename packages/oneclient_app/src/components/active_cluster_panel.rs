@@ -2,7 +2,7 @@ use freya::animation::*;
 use freya::prelude::*;
 use freya::router::RouterContext;
 
-use crate::components::{Button, Icon, IconType, LobbyHeroChip};
+use crate::components::{Button, Icon, IconType};
 use oneclient_common::parse_mc_version;
 use oneclient_core::clusters::ClusterKind;
 
@@ -74,14 +74,13 @@ impl Component for ActiveClusterPanel {
                         .font_size(text_size(24.))
                         .color(colors::on_art_secondary()),
                 )
-                .child(LobbyHeroChip);
         };
 
         let version = format!("{} {}", cluster.mc_version, cluster.mc_loader);
         let (title, subtitle) = if cluster.user_created && cluster.kind != ClusterKind::OneClient {
             (cluster.name.clone(), version)
         } else {
-            let mut parts = vec!["OneClient".to_string()];
+            let mut parts = vec!["vinlauncher".to_string()];
             let title = if cluster.user_created {
                 parts.push(version);
                 cluster.name.clone()
@@ -94,6 +93,7 @@ impl Component for ActiveClusterPanel {
         let cluster_id = cluster.id;
         let syncing = launch_syncing(&launcher, cluster.uses_bundles());
         let shared_dir_taken = shared_dir_taken(&game, &sorted, cluster_id);
+        let launch_dispatch = dispatch.clone();
 
         rect()
             .vertical()
@@ -116,6 +116,9 @@ impl Component for ActiveClusterPanel {
             .child(
                 label()
                     .text(subtitle)
+                    .width(Size::fill())
+                    .max_lines(1)
+                    .text_overflow(TextOverflow::Ellipsis)
                     .font_size(text_size(16.))
                     .font_weight(FontWeight::SEMI_BOLD)
                     .color(colors::on_art_secondary()),
@@ -129,11 +132,24 @@ impl Component for ActiveClusterPanel {
                     .child(launch_button(
                         cluster_id,
                         dispatch,
-                        launch_button_state(&game, cluster_id, syncing, shared_dir_taken),
+                        launch_button_state(
+                            &game,
+                            cluster_id,
+                            syncing,
+                            shared_dir_taken,
+                            Some(cluster.stage),
+                        ),
+                        cluster.stage != oneclient_cluster::ClusterStage::Ready,
                     ))
+                    .maybe_child((cluster.stage != oneclient_cluster::ClusterStage::Ready).then(|| {
+                        Button::new()
+                            .secondary()
+                            .medium()
+                            .on_press(move |_| launch_dispatch.launch_cluster(cluster_id))
+                            .text(t("oneclient.app.launch.launch"))
+                    }))
                     .child(cluster_settings_button(cluster_id)),
             )
-            .child(LobbyHeroChip)
     }
 }
 
@@ -141,6 +157,7 @@ fn launch_button(
     cluster_id: i64,
     dispatch: crate::Actions,
     state: (&'static str, bool),
+    install: bool,
 ) -> impl IntoElement {
     let (label, enabled) = state;
     Button::new()
@@ -152,7 +169,11 @@ fn launch_button(
         .padding(Gaps::new_symmetric(8., 24.))
         .on_press(move |_| {
             if enabled {
-                dispatch.launch_cluster(cluster_id);
+                if install {
+                    dispatch.install_cluster(cluster_id);
+                } else {
+                    dispatch.launch_cluster(cluster_id);
+                }
             }
         })
         .text(label)

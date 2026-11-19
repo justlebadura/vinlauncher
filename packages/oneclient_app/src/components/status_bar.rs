@@ -228,6 +228,7 @@ impl Component for StatusBanner {
 
         let message = rect()
             .horizontal()
+            .width(Size::flex(1.0))
             .height(Size::fill())
             .cross_align(Alignment::Center)
             .spacing(8.)
@@ -239,6 +240,8 @@ impl Component for StatusBanner {
                     .font_size(text_size(12.))
                     .font_weight(FontWeight::MEDIUM)
                     .max_lines(1)
+                    .text_overflow(TextOverflow::Ellipsis)
+                    .width(Size::flex(1.0))
                     .color(Color::WHITE),
             )
             .maybe_child(action);

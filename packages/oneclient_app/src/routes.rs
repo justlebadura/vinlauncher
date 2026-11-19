@@ -11,7 +11,7 @@ use crate::layout::SettingsShell;
 use crate::view::{
     NotFound, Relocating, Startup,
     app::{
-        Clusters, Debug, Home, Stats, Wardrobe,
+        Clusters, Debug, Home, Stats,
         browser::{Browser, BrowserPackage},
         cluster::{
             ClusterDataPacks, ClusterLogs, ClusterMods, ClusterOverview, ClusterScreenshots,
@@ -24,7 +24,7 @@ use crate::view::{
         },
     },
     onboarding::{
-        OnboardingAccount, OnboardingBundles, OnboardingLanguage, OnboardingLocation,
+        OnboardingAccount, OnboardingLanguage, OnboardingLocation,
         OnboardingMigration, OnboardingPreferences, OnboardingSummary, OnboardingTerms,
         OnboardingWelcome,
     },
@@ -54,8 +54,6 @@ pub enum Route {
             OnboardingAccount {},
             #[route("/onboarding/preferences")]
             OnboardingPreferences {},
-            #[route("/onboarding/bundles")]
-            OnboardingBundles {},
             #[route("/onboarding/summary")]
             OnboardingSummary {},
         #[end_layout]
@@ -98,8 +96,6 @@ pub enum Route {
                 package_id: String,
                 add_to_cluster: bool,
             },
-            #[route("/app/wardrobe")]
-            Wardrobe {},
             #[route("/app/stats")]
             Stats {},
             #[route("/app/debug")]
@@ -149,7 +145,6 @@ impl Route {
             Route::OnboardingLanguage { .. } => t("oneclient.routes.onboarding_language"),
             Route::OnboardingAccount { .. } => t("oneclient.routes.onboarding_account"),
             Route::OnboardingPreferences { .. } => t("oneclient.routes.onboarding_preferences"),
-            Route::OnboardingBundles { .. } => t("oneclient.routes.onboarding_bundles"),
             Route::OnboardingSummary { .. } => t("oneclient.routes.onboarding_summary"),
             Route::Home { .. } => t("oneclient.routes.home"),
             Route::Clusters { .. } => t("oneclient.routes.clusters"),
@@ -165,7 +160,6 @@ impl Route {
             Route::ClusterSettings { .. } => t("oneclient.routes.cluster_settings"),
             Route::Browser { .. } => t("oneclient.routes.browser"),
             Route::BrowserPackage { .. } => t("oneclient.routes.browser_package"),
-            Route::Wardrobe { .. } => t("oneclient.routes.wardrobe"),
             Route::Stats { .. } => t("oneclient.routes.stats"),
             Route::Debug { .. } => t("oneclient.routes.debug"),
             Route::SettingsAppearance { .. } => t("oneclient.routes.settings_appearance"),

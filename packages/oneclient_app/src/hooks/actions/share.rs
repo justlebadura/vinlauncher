@@ -202,7 +202,7 @@ impl Actions {
                 async move {
                     let session = GroupedProgressSession::start(&state.services.events, title);
                     let shared = async {
-                        let store = sharing::default_store(state.auth.clone());
+                        let store = sharing::default_store();
                         let ledger = sharing::default_ledger()?;
                         match job {
                             ShareJob::Everything(options) => {
@@ -271,7 +271,7 @@ impl Actions {
         spawn_in_window(async move {
             let stopped = off_ui(async move {
                 let state = launcher::state()?;
-                let store = sharing::default_store(state.auth.clone());
+                let store = sharing::default_store();
                 let ledger = sharing::default_ledger()?;
                 sharing::stop_sharing(cluster_id, store.as_ref(), &ledger).await
             })
@@ -329,7 +329,7 @@ impl Actions {
         spawn_in_window(async move {
             let fetched = off_ui(async move {
                 let state = launcher::state()?;
-                let store = sharing::default_store(state.auth.clone());
+                let store = sharing::default_store();
                 sharing::fetch_share(store.as_ref(), &input).await
             })
             .await;
@@ -379,7 +379,7 @@ impl Actions {
         let check = off_ui({
             let state = state.clone();
             async move {
-                let store = sharing::default_store(state.auth.clone());
+                let store = sharing::default_store();
                 let ledger = sharing::default_linked_ledger()?;
                 sharing::check_update(store.as_ref(), &ledger, cluster_id).await
             }
@@ -488,7 +488,7 @@ impl Actions {
             async move {
                 let session = GroupedProgressSession::start(&state.services.events, title);
                 let applied = async {
-                    let store = sharing::default_store(state.auth.clone());
+                    let store = sharing::default_store();
                     let ledger = sharing::default_linked_ledger()?;
                     sharing::apply_update(&state, store.as_ref(), &ledger, cluster_id).await
                 }
@@ -644,7 +644,7 @@ pub async fn load_owner_check(cluster_id: ClusterId) -> OwnerCheck {
     };
     let collaborator_state = state.clone();
     let ledger_entry = off_ui(async move {
-        let store = sharing::default_store(state.auth.clone());
+        let store = sharing::default_store();
         let ledger = sharing::default_ledger()?;
         let entry = ledger.find(cluster_id, store.name()).await?;
         let Some(entry) = entry else {
@@ -680,7 +680,7 @@ pub async fn load_is_shared(cluster_id: ClusterId) -> bool {
         return false;
     };
     off_ui(async move {
-        let store = sharing::default_store(state.auth.clone());
+        let store = sharing::default_store();
         let ledger = sharing::default_ledger()?;
         oneclient_core::LauncherResult::Ok(ledger.find(cluster_id, store.name()).await?.is_some())
     })
@@ -694,7 +694,7 @@ async fn collaborator_check(state: Arc<LauncherState>, cluster_id: ClusterId) ->
         let Some(link) = links.find(cluster_id).await? else {
             return oneclient_core::LauncherResult::Ok(None);
         };
-        let store = sharing::default_store(state.auth.clone());
+        let store = sharing::default_store();
         let remote = store.describe(&link.code).await?;
         Ok(
             (remote.role == ShareRole::Collaborator).then(|| ShareReady {
@@ -731,7 +731,7 @@ pub async fn load_collaborators(code: String) -> Result<Vec<Collaborator>, Strin
     let code = share_code(&code)?;
     let state = launcher::state().map_err(|err| err.to_string())?;
     off_ui(async move {
-        let store = sharing::default_store(state.auth.clone());
+        let store = sharing::default_store();
         store.collaborators(&code).await
     })
     .await
@@ -742,7 +742,7 @@ pub async fn add_collaborator(code: String, username: String) -> Result<Collabor
     let code = share_code(&code)?;
     let state = launcher::state().map_err(|err| err.to_string())?;
     off_ui(async move {
-        let store = sharing::default_store(state.auth.clone());
+        let store = sharing::default_store();
         store.add_collaborator(&code, username.trim()).await
     })
     .await
@@ -753,7 +753,7 @@ pub async fn remove_collaborator(code: String, uuid: uuid::Uuid) -> Result<(), S
     let code = share_code(&code)?;
     let state = launcher::state().map_err(|err| err.to_string())?;
     off_ui(async move {
-        let store = sharing::default_store(state.auth.clone());
+        let store = sharing::default_store();
         store.remove_collaborator(&code, uuid).await
     })
     .await

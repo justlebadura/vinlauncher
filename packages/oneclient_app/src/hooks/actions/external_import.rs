@@ -10,8 +10,7 @@ use oneclient_content::packages::PackageError;
 use oneclient_core::clusters::ModpackSource;
 use oneclient_core::{
     ExternalImportReport, ExternalInstance, ImportChoices, InstanceArchive, UnpublishedCheck,
-    UnpublishedFile,
-    alternative_version_id, discard_instance_archive, find_unpublished_mods,
+    UnpublishedFile, alternative_version_id, discard_instance_archive, find_unpublished_mods,
     import_external_instance, instance_mods_stamp, is_instance_archive, open_instance_archive,
 };
 use oneclient_events::{GroupedProgressSession, TaskCategory, TaskPhase};
@@ -245,7 +244,10 @@ impl Actions {
                     (job, unpublished)
                 })
                 .collect();
-            let others = held.iter().filter(|(_, unpublished)| unpublished.is_none()).count();
+            let others = held
+                .iter()
+                .filter(|(_, unpublished)| unpublished.is_none())
+                .count();
             confirming().extend(held);
             let views = found.into_iter().map(|(_, view)| view).collect();
             actions
@@ -256,8 +258,9 @@ impl Actions {
     pub fn confirm_unpublished_import(&self, all: bool) {
         self.with_engine(|app| app.notifications.close_unpublished_import());
         let held = std::mem::take(&mut *confirming());
-        let (start, skipped): (Vec<_>, Vec<_>) =
-            held.into_iter().partition(|(_, unpublished)| all || unpublished.is_none());
+        let (start, skipped): (Vec<_>, Vec<_>) = held
+            .into_iter()
+            .partition(|(_, unpublished)| all || unpublished.is_none());
         let start: Vec<ExternalImportJob> = start.into_iter().map(|(job, _)| job).collect();
         let kept: HashSet<&PathBuf> = start
             .iter()
@@ -274,7 +277,9 @@ impl Actions {
 
     pub fn confirm_unpublished_import_without(&self) {
         for (job, unpublished) in confirming().iter_mut() {
-            job.choices.skip.extend(unpublished.take().unwrap_or_default());
+            job.choices
+                .skip
+                .extend(unpublished.take().unwrap_or_default());
         }
         self.confirm_unpublished_import(true);
     }

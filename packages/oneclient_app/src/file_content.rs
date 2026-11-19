@@ -43,7 +43,7 @@ pub fn desktop_entry(name: &str, exe: &Path, folder: &str, icon: &str) -> String
          Type=Application\n\
          Version=1.0\n\
          Name={name}\n\
-         Comment=Launch {name} with OneClient\n\
+         Comment=Launch {name} with vinlauncher\n\
          Exec={exec}\n\
          Icon={icon}\n\
          Terminal=false\n\
@@ -58,7 +58,7 @@ pub fn url_handler_entry(exe: &Path, scheme: &str, icon: &str) -> String {
     format!(
         "[Desktop Entry]\n\
          Type=Application\n\
-         Name=OneClient\n\
+         Name=vinlauncher\n\
          Exec={exec} %u\n\
          Icon={icon}\n\
          Terminal=false\n\
@@ -117,7 +117,7 @@ pub fn info_plist(name: &str, executable: &str, folder: &str, icon: Option<&str>
          <dict>\n\
          \t<key>CFBundleName</key>\n\t<string>{display}</string>\n\
          \t<key>CFBundleDisplayName</key>\n\t<string>{display}</string>\n\
-         \t<key>CFBundleIdentifier</key>\n\t<string>org.polyfrost.OneClient.shortcut.{slug}</string>\n\
+         \t<key>CFBundleIdentifier</key>\n\t<string>app.vinlauncher.shortcut.{slug}</string>\n\
          \t<key>CFBundleExecutable</key>\n\t<string>{executable}</string>\n\
          {icon_entry}\
          \t<key>CFBundlePackageType</key>\n\t<string>APPL</string>\n\
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn the_mac_wrapper_survives_a_quote_in_the_path() {
-        let script = shell_script(&PathBuf::from("/Users/o'brien/OneClient"), "pack");
+        let script = shell_script(&PathBuf::from("/Users/o'brien/vinlauncher"), "pack");
         assert!(script.contains(r"'/Users/o'\''brien/OneClient'"));
         assert!(script.starts_with("#!/bin/sh\n"));
     }

@@ -330,9 +330,11 @@ impl Component for ClusterCard {
 fn title_label(text: String) -> Label {
     label()
         .text(text)
+        .width(Size::fill())
         .font_size(text_size(32.))
         .font_weight(FontWeight::SEMI_BOLD)
         .max_lines(1)
+        .text_overflow(TextOverflow::Ellipsis)
         .color(colors::on_media())
 }
 

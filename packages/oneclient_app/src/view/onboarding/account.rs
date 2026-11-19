@@ -1,11 +1,14 @@
 use freya::prelude::*;
+use freya::query::MutationStateData;
 use oneclient_auth::MinecraftAccount;
 
-use crate::components::{Avatar, Button, Icon, IconType, use_microsoft_login};
-use crate::hooks::{try_default_account, use_current_account};
+use crate::components::{Avatar, Button, Icon, IconType, TextInput, use_microsoft_login};
+use crate::hooks::{
+    AddOfflineAccountKeys, try_default_account, use_add_offline_account, use_current_account,
+};
 use crate::i18n::t;
 use crate::routes::Route;
-use crate::theme::{colors, text_size};
+use crate::theme::{colors, rounded, text_size};
 use crate::view::onboarding::{
     onboarding_illustration, onboarding_nav, onboarding_page, step_heading,
 };
@@ -17,9 +20,42 @@ impl Component for OnboardingAccount {
     fn render(&self) -> impl IntoElement {
         let account_query = use_current_account();
         let msa = use_microsoft_login();
+        let add_offline = use_add_offline_account();
+
+        let mut username = use_state(String::new);
+        let mut show_offline = use_state(|| false);
+
+        let mut offline_error: Option<String> = None;
+        match &*add_offline.read().state() {
+            MutationStateData::Settled { res: Err(err), .. }
+            | MutationStateData::Loading {
+                res: Some(Err(err)),
+            } => {
+                offline_error = Some(err.to_string());
+                show_offline.set(true);
+            }
+            MutationStateData::Settled { res: Ok(_), .. } => {
+                // vinlauncher: account created — close the offline popup and
+                // let the user continue.
+                show_offline.set(false);
+            }
+            _ => {}
+        }
 
         let account = try_default_account(&account_query);
         let has_account = account.is_some();
+
+        let offline_name = username.read().trim().to_string();
+        let offline_uuid = (!offline_name.is_empty())
+            .then(|| oneclient_auth::offline_uuid(&offline_name).to_string());
+
+        let on_confirm_offline = move |_| {
+            let name = username.peek().trim().to_string();
+            if name.is_empty() {
+                return;
+            }
+            add_offline.mutate(AddOfflineAccountKeys { username: name });
+        };
 
         let content = rect()
             .vertical()
@@ -33,8 +69,13 @@ impl Component for OnboardingAccount {
                 Some(account) => account_preview(account).into_element(),
                 None => {
                     let start = msa.clone();
-                    sign_in_card(msa.pending, msa.error.clone(), move |_| start.start())
-                        .into_element()
+                    sign_in_card(
+                        msa.pending,
+                        msa.error.clone(),
+                        move |_| show_offline.set(true),
+                        move |_| start.start(),
+                    )
+                    .into_element()
                 }
             })
             .into_element();
@@ -44,8 +85,8 @@ impl Component for OnboardingAccount {
             content,
             onboarding_nav(
                 Some(Route::OnboardingLanguage {}),
-                Route::OnboardingBundles {},
-                has_account,
+                Route::OnboardingPreferences {},
+                true,
             ),
         );
 
@@ -53,6 +94,15 @@ impl Component for OnboardingAccount {
             .width(Size::fill())
             .height(Size::fill())
             .child(page)
+            .maybe_child(show_offline.read().then(|| {
+                offline_card(
+                    username,
+                    offline_uuid,
+                    offline_error,
+                    on_confirm_offline,
+                    show_offline,
+                )
+            }))
             .maybe_child(msa.popup())
     }
 }
@@ -97,6 +147,7 @@ fn account_preview(account: &MinecraftAccount) -> impl IntoElement {
 fn sign_in_card(
     pending: bool,
     error: Option<String>,
+    on_open_offline: impl FnMut(Event<PressEventData>) + 'static,
     on_add: impl FnMut(Event<PressEventData>) + 'static,
 ) -> impl IntoElement {
     rect()
@@ -115,6 +166,15 @@ fn sign_in_card(
                 } else {
                     t("oneclient.onboarding.account.add")
                 }),
+        )
+        .child(
+            Button::new()
+                .secondary()
+                .large()
+                .enabled(!pending)
+                .on_press(on_open_offline)
+                .child(Icon::new(IconType::Plus).size(16.))
+                .text(t("oneclient.onboarding.account.offline")),
         )
         .maybe_child(error.map(|message| {
             rect()
@@ -135,4 +195,85 @@ fn sign_in_card(
                 .into_element()
         }))
         .into_element()
+}
+
+fn offline_card(
+    username: State<String>,
+    uuid_preview: Option<String>,
+    error: Option<String>,
+    mut on_confirm: impl FnMut(Event<PressEventData>) + 'static,
+    mut show: State<bool>,
+) -> impl IntoElement {
+    crate::components::OverlayPopup::new()
+        .on_close(move |()| show.set(false))
+        .child(
+            rect()
+                .width(Size::window_percent(100.))
+                .height(Size::window_percent(100.))
+                .center()
+                .child(
+                    rect()
+                        .vertical()
+                        .width(Size::px(380.))
+                        .max_width(Size::window_percent(90.))
+                        .spacing(16.)
+                        .padding(Gaps::new_all(20.))
+                        .corner_radius(rounded(16.))
+                        .background(colors::page_elevated())
+                        .child(
+                            label()
+                                .text(t("oneclient.onboarding.account.offline_title"))
+                                .font_size(text_size(18.))
+                                .font_weight(FontWeight::SEMI_BOLD)
+                                .color(colors::fg_primary()),
+                        )
+                        .child(
+                            rect()
+                                .vertical()
+                                .width(Size::fill())
+                                .spacing(6.)
+                                .child(
+                                    label()
+                                        .text(t("oneclient.onboarding.account.offline_username"))
+                                        .font_size(text_size(12.))
+                                        .color(colors::fg_secondary()),
+                                )
+                                .child(
+                                    TextInput::new(username).placeholder(t(
+                                        "oneclient.onboarding.account.offline_username_placeholder",
+                                    )),
+                                ),
+                        )
+                        .child(
+                            rect()
+                                .vertical()
+                                .width(Size::fill())
+                                .spacing(6.)
+                                .child(
+                                    label()
+                                        .text("UUID")
+                                        .font_size(text_size(12.))
+                                        .color(colors::fg_secondary()),
+                                )
+                                .child(
+                                    label()
+                                        .text(uuid_preview.unwrap_or_else(|| "-".to_string()))
+                                        .font_size(text_size(12.))
+                                        .color(colors::fg_secondary()),
+                                ),
+                        )
+                        .maybe_child(error.map(|message| {
+                            label()
+                                .text(message)
+                                .font_size(text_size(12.))
+                                .color(colors::danger())
+                        }))
+                        .child(
+                            Button::new()
+                                .primary()
+                                .on_press(move |e| on_confirm(e))
+                                .text(t("oneclient.onboarding.account.offline_confirm")),
+                        ),
+                ),
+        )
 }

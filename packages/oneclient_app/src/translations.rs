@@ -16,6 +16,9 @@ const FILE_NAME: &str = "oneclient.json";
 const MANIFEST_TTL: Duration = Duration::from_secs(6 * 60 * 60);
 const RETRY_DELAY: Duration = Duration::from_secs(10 * 60);
 
+/// vinlauncher: Spanish is bundled in the binary and always available, 100% coverage.
+const BUNDLED_ES_ES: &str = include_str!("../lang/es_es.json");
+
 const NAMES: &[(&str, &str, &str)] = &[
     ("ar_SA", "العربية", "Arabic"),
     ("bg_BG", "Български", "Bulgarian"),
@@ -108,10 +111,11 @@ pub fn coverage(code: Option<&str>) -> Option<u32> {
 }
 
 pub fn init(language: Option<String>) {
-    if let Some(manifest) = cached_manifest() {
-        *AVAILABLE.write().unwrap_or_else(|e| e.into_inner()) =
-            manifest.0.files.into_keys().collect();
+    let mut languages = bundled_codes();
+    if let Some((manifest, _)) = cached_manifest() {
+        languages.extend(manifest.files.into_keys());
     }
+    *AVAILABLE.write().unwrap_or_else(|e| e.into_inner()) = languages;
     select(language);
 }
 
@@ -222,12 +226,26 @@ fn notify_changed() {
 }
 
 fn install_cached(code: Option<&str>) {
-    let table = code
-        .and_then(newest_cached)
-        .and_then(|path| std::fs::read(path).ok())
-        .and_then(|bytes| parse_translations(&bytes));
-    i18n::install(table);
+    let bundled = code.and_then(bundled);
+    let mut table = bundled.unwrap_or_default();
+    if let Some(path) = code.and_then(newest_cached) {
+        if let Some(bytes) = std::fs::read(path).ok() {
+            table.extend(parse_translations(&bytes).unwrap_or_default());
+        }
+    }
+    i18n::install(if table.is_empty() { None } else { Some(table) });
     notify_changed();
+}
+
+fn bundled_codes() -> Vec<String> {
+    vec!["es_ES".to_string(), "es_MX".to_string()]
+}
+
+fn bundled(code: &str) -> Option<HashMap<String, String>> {
+    match code {
+        "es_ES" | "es_MX" => parse_translations(BUNDLED_ES_ES.as_bytes()),
+        _ => None,
+    }
 }
 
 fn valid_code(code: &str) -> bool {

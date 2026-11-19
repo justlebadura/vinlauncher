@@ -224,7 +224,7 @@ fn hero(
                                 .child(
                                     Button::new()
                                         .secondary()
-                                        .enabled(has_microsoft)
+                                        .enabled(!microsoft_pending)
                                         .on_press(on_open_offline)
                                         .child(Icon::new(IconType::Plus).size(16.))
                                         .text(t("oneclient.settings.accounts.add_offline")),
@@ -232,13 +232,6 @@ fn hero(
                         )
                         .map(error, |el, msg| {
                             el.child(hint_line(IconType::AlertTriangle, msg, colors::danger()))
-                        })
-                        .maybe(!has_microsoft, |el| {
-                            el.child(hint_line(
-                                IconType::InfoCircle,
-                                t("oneclient.settings.accounts.microsoft_required").to_string(),
-                                colors::fg_secondary(),
-                            ))
                         }),
                 ),
         )
@@ -281,7 +274,7 @@ fn model_frame(id: Option<Uuid>) -> impl IntoElement {
         .into_element()
 }
 
-fn mutation_err_text<M>(mutation: &UseMutation<M>) -> Option<String>
+pub(crate) fn mutation_err_text<M>(mutation: &UseMutation<M>) -> Option<String>
 where
     M: MutationCapability,
     M::Err: std::fmt::Display,
@@ -461,6 +454,9 @@ impl Component for AccountRow {
         let mut refreshing = use_state(|| false);
         let is_refreshing = *refreshing.read();
 
+        let mut show_skin = use_state(|| false);
+        let popup_open = *show_skin.read();
+
         let spin = use_animation(|conf| {
             conf.on_finish(OnFinish::restart());
             AnimNum::new(0., 360.)
@@ -606,8 +602,11 @@ impl Component for AccountRow {
                 Button::new()
                     .ghost()
                     .icon()
-                    .enabled(false)
-                    .tooltip(t("oneclient.common.edit"))
+                    .tooltip(t("oneclient.settings.accounts.skin.change"))
+                    .on_press(move |e: Event<PressEventData>| {
+                        e.stop_propagation();
+                        show_skin.set(true);
+                    })
                     .child(
                         Icon::new(IconType::Pencil01)
                             .size(18.)
@@ -629,6 +628,15 @@ impl Component for AccountRow {
                             .color(colors::fg_secondary()),
                     ),
             )
+            .maybe_child(popup_open.then(|| {
+                super::ChangeSkinPopup {
+                    id,
+                    username: self.username.clone(),
+                    kind: self.kind,
+                    on_close: EventHandler::new(move |()| show_skin.set(false)),
+                }
+                .into_element()
+            }))
             .into_element()
     }
 }

@@ -79,7 +79,7 @@ impl Component for OnboardingPreferences {
             onboarding_illustration(IconType::OnboardingPreferences),
             content,
             onboarding_nav(
-                Some(Route::OnboardingBundles {}),
+                Some(Route::OnboardingAccount {}),
                 Route::OnboardingSummary {},
                 true,
             ),

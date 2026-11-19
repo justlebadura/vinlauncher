@@ -16,7 +16,6 @@ pub const SKYCLIENT_BASE_URL: &str =
 pub const META_URL_BASE: &str = "https://data-v2.polyfrost.org";
 pub const TOS_URL: &str = "https://polyfrost.org/legal/terms";
 pub const PRIVACY_URL: &str = "https://polyfrost.org/legal/privacy";
-pub const PLUS_BACKEND_URL: &str = "https://plus.polyfrost.org";
 pub const CRASH_DATA_URL: &str =
     "https://raw.githubusercontent.com/Polyfrost/CrashData/refs/heads/main/crashes.json";
 
@@ -30,7 +29,7 @@ pub const SENTRY_DSN: &str = match option_env!("ONECLIENT_SENTRY_DSN") {
 };
 
 pub const LAUNCHER_LABEL: &str = concat!(
-    "OneClient v",
+    "VinLauncher v",
     env!("CARGO_PKG_VERSION"),
     cfg_select! {
         debug_assertions => " (debug)",

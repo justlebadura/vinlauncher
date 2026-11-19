@@ -91,10 +91,7 @@ impl CredentialsStore {
     }
 
     fn insert_offline_account(&mut self, username: String) -> AuthResult<MinecraftAccount> {
-        if !self.has_microsoft_account() {
-            return Err(AuthError::OfflineRequiresMicrosoft);
-        }
-
+        // vinlauncher: offline accounts are allowed without a Microsoft account.
         validate_offline_username(&username)?;
 
         if self
@@ -107,6 +104,9 @@ impl CredentialsStore {
 
         let account = offline_account(username);
         self.users.insert(account.id, account.clone());
+        if self.default_user.is_none() {
+            self.default_user = Some(account.id);
+        }
         Ok(account)
     }
 
@@ -205,8 +205,9 @@ impl CredentialsStore {
             return Ok(None);
         };
 
-        if account.is_offline() && !self.has_microsoft_account() {
-            return Err(AuthError::OfflineRequiresMicrosoft);
+        if account.is_offline() {
+            // vinlauncher: offline default accounts are fine without Microsoft.
+            return Ok(Some(account));
         }
 
         Ok(Some(account))

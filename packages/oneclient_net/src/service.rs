@@ -109,7 +109,7 @@ impl RequestClient {
                 .timeout(std::time::Duration::from_mins(10))
                 .tls_backend_rustls()
                 .user_agent(format!(
-                    "OneClient {} ({})",
+                    "vinlauncher {} ({})",
                     env!("CARGO_PKG_VERSION"),
                     env!("CARGO_PKG_HOMEPAGE")
                 ))

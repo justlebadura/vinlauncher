@@ -6,7 +6,7 @@ use oneclient_common::paths;
 use super::launcher::LauncherSettings;
 use super::store::save_settings;
 
-pub const FOLDER_NAME: &str = "OneClient";
+pub const FOLDER_NAME: &str = "vinlauncher";
 const LOW_SPACE_BYTES: u64 = 5 * 1000 * 1000 * 1000;
 
 const PROBE_NAME: &str = ".oneclient_write_test";
@@ -68,7 +68,7 @@ pub async fn resolve(picked: &Path) -> PathBuf {
 pub fn default_path() -> Result<PathBuf, String> {
     paths::config_dir()
         .map(Path::to_path_buf)
-        .map_err(|err| format!("Couldn't work out where OneClient keeps its settings: {err}"))
+        .map_err(|err| format!("Couldn't work out where vinlauncher keeps its settings: {err}"))
 }
 
 #[must_use]

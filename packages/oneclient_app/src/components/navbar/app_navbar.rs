@@ -10,7 +10,7 @@ use crate::{
     components::{Avatar, Icon, IconType},
     hooks::{
         settled_or_loading, try_default_account, use_active_cluster_id, use_browser_type,
-        use_chat_allowed, use_chat_unread, use_clusters, use_current_account, use_dispatch,
+        use_clusters, use_current_account, use_dispatch,
         use_notifications_snapshot,
     },
     i18n::t,
@@ -171,12 +171,6 @@ fn navbar_center(is_small: bool) -> impl IntoElement {
             nav_label: t("oneclient.components.navbar.browse"),
             over_art,
         })
-        .child(NavLink {
-            active: route == Route::Wardrobe {},
-            target: NavTarget::Route(Route::Wardrobe {}),
-            nav_label: t("oneclient.components.navbar.wardrobe"),
-            over_art,
-        })
 }
 
 /// Falls back active cluster then most recently played then Versions when none exist
@@ -238,7 +232,7 @@ impl Component for NavLink {
             .main_align(Alignment::Center)
             .cross_align(Alignment::Center)
             .height(Size::px(36.))
-            .width(Size::px(nav_label.len() as f32 * 10. + 34.))
+            .width(Size::px(nav_label.chars().count() as f32 * 10. + 34.))
             .corner_radius(rounded(10.))
             .background(background)
             .maybe(active, |el| {
@@ -289,8 +283,6 @@ impl Component for NavbarRight {
         let current_account = use_current_account();
         let dispatch = use_dispatch();
         let unread = use_notifications_snapshot().unread_count();
-        let unread_chats = use_chat_unread();
-        let chat_allowed = use_chat_allowed();
 
         let has_account = settled_or_loading(&current_account)
             .is_none_or(|account| account.is_some_and(|account| account.is_microsoft()));
@@ -298,15 +290,6 @@ impl Component for NavbarRight {
         let account_uuid = try_default_account(&current_account)
             .map(|account| account.id.to_string())
             .unwrap_or_else(|| uuid::Uuid::nil().to_string());
-
-        let social_dispatch = dispatch.clone();
-        let toggle_social = move |_| {
-            if crate::view::chat::is_chat_window_open() {
-                crate::view::chat::open_chat_window();
-            } else {
-                social_dispatch.toggle_social();
-            }
-        };
 
         let notif_dispatch = dispatch.clone();
         let open_notifications = move |_| {
@@ -323,13 +306,6 @@ impl Component for NavbarRight {
             .main_align(Alignment::End)
             .cross_align(Alignment::Center)
             .spacing(8.)
-            .maybe_child(chat_allowed.then(|| {
-                super::navbar_button(foreground)
-                    .tooltip(t("oneclient.components.navbar.social"))
-                    .enabled(has_account)
-                    .child(social_icon(unread_chats))
-                    .on_press(toggle_social)
-            }))
             .child(
                 super::navbar_button(foreground)
                     .tooltip(t("oneclient.components.navbar.notifications"))
@@ -378,23 +354,6 @@ fn avatar_with_gear(uuid: String) -> impl IntoElement {
                         .color(theme::colors::fg_secondary()),
                 ),
         )
-}
-
-fn social_icon(unread: bool) -> impl IntoElement {
-    rect()
-        .width(Size::px(20.))
-        .height(Size::px(20.))
-        .child(Icon::new(IconType::Users01).size(20.))
-        .maybe_child(unread.then(|| {
-            rect()
-                .position(Position::new_absolute().top(-2.).right(-2.))
-                .width(Size::px(8.))
-                .height(Size::px(8.))
-                .corner_radius(theme::rounded(4.))
-                .background(theme::colors::brand())
-                .layer(Layer::Relative(3))
-                .into_element()
-        }))
 }
 
 fn notification_bell(unread: usize) -> impl IntoElement {

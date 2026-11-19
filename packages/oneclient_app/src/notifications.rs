@@ -32,7 +32,6 @@ pub enum NotificationActionKind {
     OpenClusterUpdate(Vec<ClusterUpdateSummary>),
     /// Routed through the link confirm popup rather than opened straight away
     OpenUrl(String),
-    OpenChat(Option<i32>),
 }
 
 /// Carries core updates whole not a display projection the modal's Update button
@@ -794,21 +793,6 @@ impl NotificationState {
         }
     }
 
-    pub fn clear_chat_notices(&mut self, inbox: &mut Vec<InboxEntry>) {
-        let ids: Vec<u64> = inbox
-            .iter()
-            .filter(|entry| {
-                entry
-                    .actions
-                    .iter()
-                    .any(|action| matches!(action.kind, NotificationActionKind::OpenChat(_)))
-            })
-            .map(|entry| entry.id)
-            .collect();
-        for id in ids {
-            self.forget_entry(inbox, id);
-        }
-    }
 
     pub fn dismiss_toast(&mut self, inbox: &mut Vec<InboxEntry>, entry_id: u64) {
         let Some(pos) = self

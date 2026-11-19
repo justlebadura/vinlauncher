@@ -9,14 +9,14 @@ authors = [
   "Polyfrost",
   "Polyfrost Contributors",
 ]
-documentation = "https://github.com/Polyfrost/OneLauncher"
+documentation = "https://example.invalid/vinlauncher"
 edition = "2024"
 homepage = "https://polyfrost.org/projects/oneclient"
 license = "GPL-3.0-only"
 readme = "README.md"
-repository = "https://github.com/Polyfrost/OneLauncher"
+repository = "https://example.invalid/vinlauncher"
 rust-version = "1.97"
-version = "2.11.0"
+version = "1.0.0"
 
 [workspace.dependencies]
 # core
@@ -32,7 +32,6 @@ oneclient_java = {path = "./packages/oneclient_java"}
 oneclient_macro = {path = "./packages/oneclient_macro"}
 oneclient_mc = {path = "./packages/oneclient_mc"}
 oneclient_net = {path = "./packages/oneclient_net"}
-oneclient_polyplus = {path = "./packages/oneclient_polyplus"}
 polyio = {path = "./packages/polyio"}
 
 # core (extra)
@@ -90,7 +89,6 @@ reqwest = {version = "=0.13.5", default-features = false, features = [
   "form",
   "system-proxy",
 ]}
-reqwest-websocket = {version = "=0.6.0"}
 tokio = {version = "=1.53.1", features = ["full"]}
 tokio-stream = {version = "=0.1.19", features = ["full"]}
 tokio-util = {version = "=0.7.19", features = ["full"]}

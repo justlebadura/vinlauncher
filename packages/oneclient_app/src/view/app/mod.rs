@@ -3,7 +3,6 @@ mod clusters;
 mod debug;
 mod home;
 mod stats;
-mod wardrobe;
 
 pub mod browser;
 pub mod cluster;
@@ -20,6 +19,7 @@ pub fn launch_button_state(
     cluster_id: i64,
     syncing: bool,
     shared_dir_taken: bool,
+    stage: Option<oneclient_cluster::ClusterStage>,
 ) -> (&'static str, bool) {
     let state = match game.stage(cluster_id) {
         Some(LaunchStage::Checking) => (t("oneclient.app.launch.checking"), false),
@@ -33,6 +33,10 @@ pub fn launch_button_state(
         _ if game.is_syncing_shared(cluster_id) => (t("oneclient.app.launch.syncing"), false),
         // Core refuses it anyway the shared game dir holds one game at a time
         _ if shared_dir_taken => (t("oneclient.app.launch.folder_in_use"), false),
+        // An instance that was never installed installs on first launch; make that explicit
+        _ if stage.is_some_and(|s| s != oneclient_cluster::ClusterStage::Ready) => {
+            (t("oneclient.app.launch.install"), true)
+        }
         _ => (t("oneclient.app.launch.launch"), true),
     };
     // Block launching while the startup bundle download is still running
@@ -76,4 +80,3 @@ pub(crate) use clusters::{
 pub use debug::Debug;
 pub use home::Home;
 pub use stats::Stats;
-pub use wardrobe::Wardrobe;

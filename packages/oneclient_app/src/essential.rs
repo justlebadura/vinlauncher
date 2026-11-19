@@ -1,7 +1,5 @@
 use oneclient_content::packages::ProviderId;
 
-use crate::i18n::t;
-
 #[derive(Debug, Clone, Copy)]
 pub struct EssentialPackage {
     pub provider: ProviderId,
@@ -19,15 +17,7 @@ impl PartialEq for EssentialPackage {
 
 impl Eq for EssentialPackage {}
 
-pub const POLYPLUS: EssentialPackage = EssentialPackage {
-    provider: ProviderId::Modrinth,
-    project_id: "Iw9mZi4a",
-    name: "Poly+",
-    disable_body: || t("oneclient.essential.polyplus.disable_body"),
-    remove_body: || t("oneclient.essential.polyplus.remove_body"),
-};
-
-pub const ESSENTIAL_PACKAGES: &[EssentialPackage] = &[POLYPLUS];
+pub const ESSENTIAL_PACKAGES: &[EssentialPackage] = &[];
 
 pub fn lookup(provider: ProviderId, package_id: &str) -> Option<&'static EssentialPackage> {
     ESSENTIAL_PACKAGES
@@ -38,16 +28,6 @@ pub fn lookup(provider: ProviderId, package_id: &str) -> Option<&'static Essenti
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn polyplus_is_essential_on_modrinth_only() {
-        assert_eq!(
-            lookup(ProviderId::Modrinth, "Iw9mZi4a").map(|p| p.name),
-            Some("Poly+")
-        );
-        assert!(lookup(ProviderId::CurseForge, "Iw9mZi4a").is_none());
-        assert!(lookup(ProviderId::Local, "Iw9mZi4a").is_none());
-    }
 
     #[test]
     fn ordinary_packages_are_not_guarded() {

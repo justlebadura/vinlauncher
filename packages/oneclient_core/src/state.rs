@@ -79,7 +79,6 @@ impl LauncherState {
 
         oneclient_common::consent::init(settings.declined_tos);
         let net_config = crate::settings::net_config(&settings);
-        oneclient_polyplus::set_base_url(&net_config.plus_api_url);
         services.requester.set_config(net_config);
         let auth =
             Arc::new(AuthService::load(services.requester.clone(), services.events.clone()).await?);
@@ -180,15 +179,6 @@ pub fn run_startup_tasks(state: &Arc<LauncherState>) {
 
         if let Err(err) = crate::clusters::apply_remote_migrations(&background).await {
             tracing::error!("cluster migrations failed: {err:#}");
-        }
-
-        if let Err(err) = crate::clusters::ensure_from_versions(&background).await {
-            tracing::error!("versions cluster provisioning failed: {err:#}");
-        } else {
-            background
-                .services
-                .events
-                .signal(oneclient_events::Signal::ClustersChanged);
         }
 
         // Must run last judging an artifact unused before recovery bundle

@@ -92,6 +92,12 @@ impl BundlesManager {
 
     #[tracing::instrument(skip_all)]
     pub async fn sync(self: &Arc<Self>, ctx: &ContentCtx) -> ContentResult<bool> {
+        // vinlauncher: the remote catalog is enabled again so "optimized"
+        // (QoL/optimization) bundles provision like the original launcher.
+        self.sync_remote_catalog_disabled(ctx).await
+    }
+
+    async fn sync_remote_catalog_disabled(self: &Arc<Self>, ctx: &ContentCtx) -> ContentResult<bool> {
         let syncing = Arc::clone(&self.syncing).lock_owned().await;
 
         let Some(fetched) = Self::fetch_manifest(ctx).await? else {
@@ -226,6 +232,8 @@ impl BundlesManager {
             return Ok(manifest.clone());
         }
         let manifest = polymrpack::read_manifest_from_archive(path).await?;
+        let mut manifest = manifest;
+        manifest.name = Self::rebrand_name(&manifest.name);
         record_external_metadata(&manifest, ctx).await;
         self.archive_cache
             .write()
@@ -275,7 +283,19 @@ impl BundlesManager {
         Ok(published_all)
     }
 
-    #[tracing::instrument(level = "debug", skip(entry, ctx, bundles_root), fields(remote_path = %entry.remote_path))]
+    /// vinlauncher: rebrand bundle display names coming from the Polyfrost catalog.
+pub fn rebrand_name(name: &str) -> String {
+    name.replacen("OneClient", "VinClient", 1)
+}
+
+fn rebrand_meta(
+    mut meta: crate::bundles::polymrpack::PolyMrpackMeta,
+) -> crate::bundles::polymrpack::PolyMrpackMeta {
+    meta.name = Self::rebrand_name(&meta.name);
+    meta
+}
+
+#[tracing::instrument(level = "debug", skip(entry, ctx, bundles_root), fields(remote_path = %entry.remote_path))]
     async fn stage_bundle(
         entry: &RemoteBundleRef,
         archive: &str,
@@ -299,6 +319,7 @@ impl BundlesManager {
 
         let meta =
             polymrpack::read_meta_from_archive(download.as_ref().unwrap_or(&disk_path)).await?;
+        let meta = Self::rebrand_meta(meta);
 
         Ok(StagedBundle {
             entry: entry.clone(),

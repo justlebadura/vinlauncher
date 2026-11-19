@@ -4,7 +4,6 @@ mod relocating;
 mod startup;
 
 pub mod app;
-pub mod chat;
 pub mod console;
 pub mod onboarding;
 

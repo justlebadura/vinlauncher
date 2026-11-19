@@ -1384,7 +1384,7 @@ fn removal_notice(disabled: &[String], shared: bool) -> (&'static str, String) {
         return (
             "Content disabled",
             format!(
-                "{names} is gone from {where_from}, so it has been switched off{scope}. Turn it back on in OneClient to restore it."
+                "{names} is gone from {where_from}, so it has been switched off{scope}. Turn it back on in vinlauncher to restore it."
             ),
         );
     }
@@ -1392,7 +1392,7 @@ fn removal_notice(disabled: &[String], shared: bool) -> (&'static str, String) {
     (
         "Content disabled",
         format!(
-            "{names} are gone from {where_from}, so they have been switched off{scope}. Turn them back on in OneClient to restore them."
+            "{names} are gone from {where_from}, so they have been switched off{scope}. Turn them back on in vinlauncher to restore them."
         ),
     )
 }
@@ -1405,7 +1405,7 @@ fn unrestored_notice(unrestored: &[String]) -> (&'static str, String) {
             "Missing from the game",
             format!(
                 "{names} could not be downloaded again, so the game starts without it. \
-                Reinstall it in OneClient once you are back online."
+                Reinstall it in vinlauncher once you are back online."
             ),
         );
     }
@@ -1414,7 +1414,7 @@ fn unrestored_notice(unrestored: &[String]) -> (&'static str, String) {
         "Missing from the game",
         format!(
             "{names} could not be downloaded again, so the game starts without them. \
-            Reinstall them in OneClient once you are back online."
+            Reinstall them in vinlauncher once you are back online."
         ),
     )
 }
@@ -1895,6 +1895,21 @@ fn mods_copied(failed: &[String]) -> LauncherResult<()> {
     Err(GameError::ModCopyFailed(removal_summary(failed)).into())
 }
 
+/// vinlauncher: rebrand Polyfrost jars copied into the game folder. The cached
+/// copy stays byte-identical, so only the in-game copy is rewritten. A failure
+/// just means the jar keeps its original branding; launching continues.
+async fn rebrand_copied_jar(dest: &Path) {
+    match oneclient_content::branding::patch_mod_jar(dest).await {
+        Ok(true) => {}
+        Ok(false) => {}
+        Err(err) => tracing::warn!(file = %dest.display(), error = %err, "could not rebrand mod jar"),
+    }
+}
+
+fn is_brandable_mod_jar(file_name: &str) -> bool {
+    file_name.ends_with(".jar")
+}
+
 /// Mods that couldn't be copied are added to `failed_copies`
 async fn link_desired(
     root: &Path,
@@ -1917,10 +1932,15 @@ async fn link_desired(
         };
 
         match placed {
-            Ok(()) => entries.push(ManifestEntry {
-                path: item.relative_path(),
-                hash: item.hash.clone(),
-            }),
+            Ok(()) => {
+                if copy && is_brandable_mod_jar(&item.file_name) {
+                    rebrand_copied_jar(&dest).await;
+                }
+                entries.push(ManifestEntry {
+                    path: item.relative_path(),
+                    hash: item.hash.clone(),
+                });
+            }
             Err(err) => {
                 tracing::warn!(
                     file = %item.file_name,
@@ -2612,7 +2632,7 @@ async fn ensure_links_note(dir: &Path) {
         format!(
             "PLEASE READ CAREFULLY!!!!\n\
             \n\
-            OneClient SPLITS your {noun} folder per version/cluster, so that you can have \
+            vinlauncher SPLITS your {noun} folder per version/cluster, so that you can have \
             separate {noun} in each.\n\
             \n\
             Add / remove {noun} IN THESE FOLDERS!!!\n\
@@ -2820,11 +2840,11 @@ async fn ensure_note(dir: &Path, content_type: ContentType) {
         format!(
             "It's empty here, but nothing is broken!\n\
         \n\
-        OneClient keeps your {noun} safe somewhere else (specifically in the global launcher cache)\
+        vinlauncher keeps your {noun} safe somewhere else (specifically in the global launcher cache)\
 		and only puts them here while you play. When you close the game, it tidies them away again.\n\
         \n\
-        Want to add {noun}? The best way is to do it right inside OneClient. Or you can drop \
-        files in this folder, and OneClient will pick them up the next time you play.\n"
+        Want to add {noun}? The best way is to do it right inside vinlauncher. Or you can drop \
+        files in this folder, and vinlauncher will pick them up the next time you play.\n"
         )
     })
     .await

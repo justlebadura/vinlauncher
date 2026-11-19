@@ -401,7 +401,10 @@ impl Actions {
     }
 
     pub fn install_modpack(&self, source: ModpackSource) {
-        REVIEWED.lock().unwrap_or_else(PoisonError::into_inner).take();
+        REVIEWED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
         self.install_modpack_with(source, PackChoices::default());
     }
 

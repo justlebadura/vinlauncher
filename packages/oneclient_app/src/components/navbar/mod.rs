@@ -23,7 +23,6 @@ pub fn window_controls() -> impl IntoElement {
 }
 
 pub(crate) fn close_launcher() {
-    crate::view::chat::close_chat_window();
     crate::platform::close();
 }
 

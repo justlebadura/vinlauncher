@@ -78,7 +78,9 @@ impl QueryCapability for ModpackHeaderQuery {
             return Ok(None);
         };
         crate::launcher::off_ui(async move {
-            Ok(Some(oneclient_content::modpacks::read_modpack_header(&path).await?))
+            Ok(Some(
+                oneclient_content::modpacks::read_modpack_header(&path).await?,
+            ))
         })
         .await
     }

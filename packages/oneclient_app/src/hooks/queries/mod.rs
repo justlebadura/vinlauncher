@@ -18,9 +18,9 @@ mod cluster_content;
 mod clusters;
 mod disable_warnings;
 mod external_launchers;
-mod import_screening;
 mod folder_watch;
 mod image;
+mod import_screening;
 mod java;
 mod logs;
 mod migration;
@@ -36,7 +36,6 @@ mod storage;
 mod tos;
 mod version_metadata;
 mod versions;
-pub mod wardrobe;
 mod worlds;
 
 pub use analytics::{
@@ -44,13 +43,13 @@ pub use analytics::{
 };
 pub use auth::{
     AddOfflineAccountKeys, BeginMicrosoftLoginMutation, CancelMicrosoftLoginKeys,
-    CancelMicrosoftLoginMutation, FinishMicrosoftLoginMutation, RefreshAccountKeys,
-    RemoveAccountKeys, SetDefaultAccountKeys, UseRefreshAccount, UseRemoveAccount,
-    UseSetDefaultAccount, accounts_have_microsoft, invalidate_auth_queries,
+    CancelMicrosoftLoginMutation, ChangeSkinKeys, ChangeSkinMutation, FinishMicrosoftLoginMutation,
+    RefreshAccountKeys, RemoveAccountKeys, SetDefaultAccountKeys, UseChangeSkin, UseRefreshAccount,
+    UseRemoveAccount, UseSetDefaultAccount, accounts_have_microsoft, invalidate_auth_queries,
     login_code_already_handled, mutation_error, mutation_is_pending, mutation_is_running,
     mutation_ok, reset_login_code_dedup, try_account, try_accounts, try_default_account,
     use_account, use_accounts, use_add_microsoft_account, use_add_offline_account,
-    use_begin_microsoft_login, use_cancel_microsoft_login, use_current_account,
+    use_begin_microsoft_login, use_cancel_microsoft_login, use_change_skin, use_current_account,
     use_default_account, use_finish_microsoft_login, use_refresh_account, use_refresh_all_accounts,
     use_remove_account, use_set_default_account,
 };
@@ -76,11 +75,9 @@ pub use clusters::{
 };
 pub use disable_warnings::{DisableWarningsQuery, disable_warnings, use_disable_warnings};
 pub use external_launchers::{external_launchers, use_external_launchers};
-pub use import_screening::{
-    import_screening, use_import_screening, use_modpack_header,
-};
 pub(crate) use folder_watch::use_folder_watch;
 pub use image::{CachedImageQuery, loaded_image, use_cached_image};
+pub use import_screening::{import_screening, use_import_screening, use_modpack_header};
 pub use java::{
     invalidate_java_queries, java_runtimes, provider_versions, use_java_runtimes,
     use_provider_versions,
@@ -96,7 +93,9 @@ pub use mutations::{
     ClusterAction, ClusterMutation, invalidate_cluster_content_queries, invalidate_cluster_queries,
     invalidate_profile_queries, use_cluster_mutation,
 };
-pub use package_updates::{PackageUpdatesQuery, package_updates, stale_hashes, use_package_updates};
+pub use package_updates::{
+    PackageUpdatesQuery, package_updates, stale_hashes, use_package_updates,
+};
 pub use packages::ALL_VERSIONS;
 pub use packages::{
     BROWSE_PAGE_SIZE, VERSIONS_PAGE_SIZE, category_list, content_type_for_slug, package_meta_batch,
@@ -113,7 +112,7 @@ pub use settings_profiles::{
     try_game_profile, use_cluster_profile, use_cluster_settings, use_game_profile,
     use_named_profiles,
 };
-pub use skin::use_player_skin;
+pub use skin::{LocalSkinQuery, use_offline_skin, use_player_skin};
 pub use state::{query_error, query_is_busy, query_is_loading, settled_or_loading};
 pub use storage::{
     DiscardLeftoversKeys, DiscardLeftoversMutation, LeftoversQuery, StorageAction,

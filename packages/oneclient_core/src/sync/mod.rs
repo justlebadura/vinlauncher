@@ -1,4 +1,3 @@
-mod http;
 mod ledger;
 mod local;
 mod settings;
@@ -10,7 +9,7 @@ use std::sync::Arc;
 
 use async_tempfile::TempDir;
 use chrono::Utc;
-use oneclient_auth::{AccountKind, AuthService};
+use oneclient_auth::AccountKind;
 use oneclient_cluster::ClusterUpdate;
 use oneclient_common::domain::ContentType;
 use oneclient_common::patch::Patch;
@@ -19,7 +18,6 @@ use oneclient_content::modpacks::SHARE_EXTENSION;
 use oneclient_content::packages::PackageStore;
 use oneclient_db::dao::cluster_bundle as bundle_dao;
 
-pub use http::HttpSyncStore;
 pub use ledger::{PendingPush, SyncEntry, SyncLedger, SyncStatus};
 pub use local::LocalSyncStore;
 pub use settings::SyncSettings;
@@ -112,11 +110,14 @@ pub fn sync_dir() -> LauncherResult<PathBuf> {
     Ok(oneclient_common::paths::data_dir()?.join("sync"))
 }
 
-pub fn default_store(auth: Arc<AuthService>) -> Arc<dyn SyncStore> {
-    match std::env::var_os(SYNC_DIR_ENV).filter(|dir| !dir.is_empty()) {
-        Some(dir) => Arc::new(LocalSyncStore::new(PathBuf::from(dir))),
-        None => Arc::new(HttpSyncStore::new(auth)),
-    }
+pub fn default_store() -> Arc<dyn SyncStore> {
+    let dir = std::env::var_os(SYNC_DIR_ENV)
+        .filter(|dir| !dir.is_empty())
+        .map_or_else(
+            || sync_dir().unwrap_or_else(|_| PathBuf::from("sync")),
+            PathBuf::from,
+        );
+    Arc::new(LocalSyncStore::new(dir))
 }
 
 #[must_use]
@@ -218,10 +219,10 @@ impl CloudSync {
         self.hold_lock(cluster_id).try_lock_owned().ok()
     }
 
-    pub fn from_defaults(auth: Arc<AuthService>) -> LauncherResult<Self> {
+    pub fn from_defaults() -> LauncherResult<Self> {
         let dir = sync_dir()?;
         Ok(Self::new(
-            default_store(auth),
+            default_store(),
             SyncLedger::at(dir.join("state.json")),
             device_name(),
             dir.join("incoming"),

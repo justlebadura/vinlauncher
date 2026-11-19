@@ -68,8 +68,8 @@ fn wizard_rail(wizard: Wizard, picks: &Picks) -> Element {
     let subtitle = if description.is_empty() {
         match picks.choice {
             TypeChoice::OneClient => match &picks.versions.chosen {
-                Some(version) => format!("OneClient · {version}"),
-                None => "OneClient".to_string(),
+                Some(version) => format!("vinlauncher · {version}"),
+                None => "vinlauncher".to_string(),
             },
             TypeChoice::Scratch => match &picks.versions.chosen {
                 Some(version) => format!("{version} · {}", picks.loader_label()),
@@ -139,7 +139,6 @@ fn wizard_rail(wizard: Wizard, picks: &Picks) -> Element {
 pub struct CreateInstanceModal {
     on_close: EventHandler<()>,
     prefill: Option<(String, GameLoader)>,
-    invite: Option<i32>,
     migrate_from: Option<(i64, GameLoader)>,
 }
 
@@ -148,18 +147,12 @@ impl CreateInstanceModal {
         Self {
             on_close: on_close.into(),
             prefill: None,
-            invite: None,
             migrate_from: None,
         }
     }
 
     pub fn prefill(mut self, version: String, loader: GameLoader) -> Self {
         self.prefill = Some((version, loader));
-        self
-    }
-
-    pub fn join_invite(mut self, invite_id: i32) -> Self {
-        self.invite = Some(invite_id);
         self
     }
 
@@ -290,16 +283,6 @@ impl Component for CreateInstanceModal {
         let mut bundle_page = wizard.bundle_page;
         let mut import_bundles = wizard.import_bundles;
 
-        let invite = crate::invite_join::wizard_invite(
-            self.invite,
-            self.prefill.as_ref(),
-            picks.versions.chosen.as_deref(),
-            picks.loader.chosen,
-        );
-        let off_invite = self.invite.is_some()
-            && invite.is_none()
-            && picks.versions.chosen.is_some()
-            && picks.loader.chosen.is_some();
         let close_x = self.on_close.clone();
         let close_cancel = self.on_close.clone();
         let close_created = self.on_close.clone();
@@ -318,11 +301,7 @@ impl Component for CreateInstanceModal {
                 picks.step,
                 Step::Folder | Step::Version | Step::Import
             ),
-            note: if off_invite {
-                t("oneclient.clusters.instance.create.invite_mismatch").to_string()
-            } else {
-                footer_note(&picks)
-            },
+            note: footer_note(&picks),
             secondary_label: if first {
                 t("oneclient.common.cancel")
             } else {
@@ -359,7 +338,7 @@ impl Component for CreateInstanceModal {
                 (false, _) if last => t("oneclient.clusters.instance.create.create").to_string(),
                 (false, _) => t("oneclient.common.next").to_string(),
             },
-            primary_enabled: is_ready(&picks) && !(last && off_invite),
+            primary_enabled: is_ready(&picks),
             primary_busy: finishing && !check_failed,
             on_close: (move |()| close_x.call(())).into(),
             on_secondary: (move |()| {
@@ -413,9 +392,7 @@ impl Component for CreateInstanceModal {
                     );
                 } else if last {
                     if let Some(action) = action.clone() {
-                        if let Some(invite_id) = invite {
-                            dispatch.create_cluster_and_join(mutation, action, invite_id);
-                        } else if let Some(source) = migrate_from {
+                        if let Some(source) = migrate_from {
                             dispatch.create_cluster_and_migrate(mutation, action, source);
                         } else {
                             mutation.mutate(action);

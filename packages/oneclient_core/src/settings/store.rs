@@ -120,7 +120,6 @@ pub async fn save_settings_and_apply(
 ) -> LauncherResult<()> {
     save_settings(settings).await?;
     let config = super::net_config(settings);
-    oneclient_polyplus::set_base_url(&config.plus_api_url);
     services.requester.set_config(config);
     Ok(())
 }

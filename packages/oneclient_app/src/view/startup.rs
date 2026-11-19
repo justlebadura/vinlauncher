@@ -11,6 +11,7 @@ use crate::hooks::{
 };
 use crate::i18n::{t, tf};
 use crate::theme::{colors, rounded, text_size};
+use crate::ui::border_all_color;
 
 /// Startup is a sequence of boolean gates, not measurable work, so the bar steps
 /// once per gate the launcher clears instead of tracking bytes
@@ -74,21 +75,41 @@ impl Component for Startup {
         let intro = use_animation(|conf| {
             conf.on_creation(OnCreation::Run);
             AnimNum::new(0., 1.)
-                .time(620)
-                .ease(Ease::Out)
+                .time(900)
+                .ease(Ease::InOut)
                 .function(Function::Cubic)
         });
 
         let pulse = use_animation(|conf| {
             conf.on_creation(OnCreation::Run);
             conf.on_finish(OnFinish::reverse());
-            AnimNum::new(0.82, 1.0)
+            AnimNum::new(0.88, 1.0)
+                .time(2400)
+                .ease(Ease::InOut)
+                .function(Function::Sine)
+        });
+
+        // vinlauncher splash: the V settles in slowly, then a ring keeps pinging
+        // around it — slow and calm so the user can take it in
+        let zoom = use_animation(|conf| {
+            conf.on_creation(OnCreation::Run);
+            AnimNum::new(0.72, 1.0)
                 .time(1600)
                 .ease(Ease::InOut)
                 .function(Function::Sine)
         });
 
+        let ping = use_animation(|conf| {
+            conf.on_creation(OnCreation::Run);
+            conf.on_finish(OnFinish::restart());
+            AnimNum::new(0.0, 1.0)
+                .time(2600)
+                .ease(Ease::Out)
+                .function(Function::Sine)
+        });
+
         let logo = use_memo(|| AppAssets::get_bytes("logo.svg").unwrap_or_default());
+        let mark = use_memo(|| AppAssets::get_bytes("icons/icon-logo.svg").unwrap_or_default());
 
         if launcher.needs_location {
             let _ = RouterContext::get().replace(Route::OnboardingWelcome {});
@@ -158,8 +179,36 @@ impl Component for Startup {
         let is_error = launcher.error.is_some();
 
         let appear = intro.get().value();
-        let rise = (1.0 - appear) * 16.;
+        let rise = (1.0 - appear) * 10.;
         let breath = pulse.read().value();
+        let zoom = zoom.read().value().clamp(0.65, 1.0);
+        let ping_t = ping.read().value();
+
+        // expanding radar-ping ring behind the V mark
+        let ring = rect()
+            .width(Size::px(96. + 64. * ping_t))
+            .height(Size::px(96. + 64. * ping_t))
+            .corner_radius(CornerRadius::new_all((48. + 32. * ping_t).round() as f32))
+            .border(border_all_color(
+                2.,
+                colors::brand().with_a(((1.0 - ping_t) * 52.) as u8),
+            ))
+            .center()
+            .opacity(1.0 - ping_t);
+
+        let brand_mark = rect()
+            .center()
+            .width(Size::px(120.))
+            .height(Size::px(120.))
+            .child(ring)
+            .child(
+                SvgViewer::new(("icons/icon-logo.svg", mark.read().cloned()))
+                    .show_loader(false)
+                    .width(Size::px(64.))
+                    .height(Size::px(64.))
+                    .color(colors::brand()),
+            )
+            .scale(zoom);
 
         let dot_color = if is_error {
             colors::danger()
@@ -198,11 +247,12 @@ impl Component for Startup {
             .center()
             .vertical()
             .spacing(14.)
+            .child(brand_mark)
             .child(
                 SvgViewer::new(("logo.svg", logo.read().cloned()))
                     .show_loader(false)
-                    .width(Size::px(288.))
-                    .height(Size::px(60.))
+                    .width(Size::px(260.))
+                    .height(Size::px(56.))
                     .color(colors::fg_primary()),
             )
             .child(

@@ -161,16 +161,20 @@ impl Component for AccountHeader {
                     .child(
                         label()
                             .text(username)
+                            .width(Size::flex(1.0))
                             .font_size(text_size(16.))
                             .font_weight(FontWeight::MEDIUM)
                             .max_lines(1)
+                            .text_overflow(TextOverflow::Ellipsis)
                             .color(colors::fg_primary()),
                     )
                     .child(
                         label()
                             .text(subtitle)
+                            .width(Size::flex(1.0))
                             .font_size(text_size(12.))
                             .max_lines(1)
+                            .text_overflow(TextOverflow::Ellipsis)
                             .color(subtitle_color),
                     ),
             )
@@ -416,9 +420,11 @@ impl Component for QuickTile {
                     .child(
                         label()
                             .text(self.title)
+                            .width(Size::flex(1.0))
                             .font_size(text_size(12.))
                             .font_weight(FontWeight::MEDIUM)
                             .max_lines(1)
+                            .text_overflow(TextOverflow::Ellipsis)
                             .color(title_color),
                     )
                     .child(
@@ -639,6 +645,7 @@ impl Component for FooterAction {
                     .text(self.text)
                     .font_size(text_size(13.))
                     .max_lines(1)
+                    .text_overflow(TextOverflow::Ellipsis)
                     .color(self.color),
             )
     }
