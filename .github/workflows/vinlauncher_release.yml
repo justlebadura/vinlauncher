@@ -143,6 +143,7 @@ jobs:
           SIG="$(cat "$PATH_ART.sig")" \
           python3 - <<'PY'
           import json, os
+          os.makedirs("fragments", exist_ok=True)
           entry = {
             "signature": os.environ["SIG"],
             "url": os.environ["URL"],
