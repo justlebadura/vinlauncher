@@ -1595,6 +1595,7 @@ impl Component for MigrateFromRow {
                 width: Size::px(220.),
                 height: 34.,
                 disabled: false,
+                allow_create: false,
                 on_pick: (move |cluster: Cluster| picked.set(Some(cluster.id))).into(),
             }
             .into_element()

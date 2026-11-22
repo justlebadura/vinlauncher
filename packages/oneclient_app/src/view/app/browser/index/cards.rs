@@ -543,7 +543,7 @@ impl Component for InstallButton {
                             IconType::Plus
                         })
                         .size(12.)
-                        .color(colors::fg_primary()),
+                        .color(colors::on_brand()),
                     )
                     .child(
                         label()
@@ -559,7 +559,7 @@ impl Component for InstallButton {
                             .font_size(text_size(11.))
                             .font_weight(FontWeight::SEMI_BOLD)
                             .max_lines(1)
-                            .color(colors::fg_primary()),
+                            .color(colors::on_brand()),
                     ),
             )
             .maybe_child(world_prompt.read().is_some().then_some(WorldInstallPrompt {

@@ -906,6 +906,7 @@ impl Component for ClusterPicker {
                 width: Size::px(240.),
                 height: 28.,
                 disabled: self.disabled,
+                allow_create: true,
                 on_pick: (move |cluster: Cluster| {
                     let to_type = browsable_type(&package_type, &cluster);
                     let carried = (to_type == package_type)

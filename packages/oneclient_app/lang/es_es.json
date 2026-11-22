@@ -1276,6 +1276,7 @@
   "oneclient.clusters.picker.caption.oneclient": "Agrupadas por versión de Minecraft",
   "oneclient.clusters.picker.empty": "Ninguna instancia coincide con su búsqueda o filtros.",
   "oneclient.clusters.picker.loading": "Cargando instancias",
+  "oneclient.clusters.picker.new_instance": "Nueva instancia…",
   "oneclient.clusters.reset.running": "Cierre el juego antes de restablecer esta instancia.",
   "oneclient.clusters.reset.shared_note": "Esta versión usa la carpeta del juego compartida, así que los archivos de configuración de ahí se conservan. Otras versiones también los usan.",
   "oneclient.clusters.reset.title": "Restablecer instancia",

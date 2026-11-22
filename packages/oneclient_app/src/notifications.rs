@@ -17,6 +17,7 @@ use uuid::Uuid;
 use crate::components::IconType;
 use crate::i18n::{t, tf};
 use crate::transfer::{TransferMeter, TransferStats};
+use crate::utils::format_size;
 
 pub const MESSAGE_TOAST_TTL: Duration = Duration::from_secs(5);
 
@@ -1251,6 +1252,17 @@ impl NotificationState {
             .meter
             .sample(completed, total)
             .filter(|stats| stats.speed_bps >= 1.0);
+
+        // The phase text alone says nothing about how far along it is so the
+        // percent (and speed when known) ride along in the body
+        let percent = ((completed as f64 / total as f64) * 100.0).round() as u64;
+        let mut body = format!("{body} · {percent}%");
+        if let Some(stats) = transfer {
+            body.push_str(&format!(
+                " · {}/s",
+                format_size(stats.speed_bps as u64)
+            ));
+        }
 
         let Some(entry) = inbox.iter_mut().find(|e| e.id == entry_id) else {
             return;

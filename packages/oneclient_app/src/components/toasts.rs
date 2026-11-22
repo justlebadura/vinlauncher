@@ -480,13 +480,27 @@ fn progress_card(entry: &InboxEntry) -> Rect {
                             .color(colors::fg_secondary()),
                     )
                     .child(
-                        progress_track(
-                            frac * 100.0,
-                            6.,
-                            colors::brand(),
-                            colors::brand().with_a(128),
-                        )
-                        .margin(Gaps::new(8., 0., 0., 0.)),
+                        rect()
+                            .horizontal()
+                            .width(Size::fill())
+                            .spacing(8.)
+                            .cross_align(Alignment::Center)
+                            .child(
+                                progress_track(
+                                    frac * 100.0,
+                                    6.,
+                                    colors::brand(),
+                                    colors::brand().with_a(128),
+                                )
+                                .margin(Gaps::new(8., 0., 0., 0.)),
+                            )
+                            .child(
+                                label()
+                                    .text(format!("{}%", (frac * 100.0).round() as u64))
+                                    .font_size(text_size(11.))
+                                    .color(colors::fg_secondary())
+                                    .margin(Gaps::new(8., 0., 0., 0.)),
+                            ),
                     ),
             ),
     )

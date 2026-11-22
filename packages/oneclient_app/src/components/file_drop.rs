@@ -572,6 +572,7 @@ fn cluster_field(
             width: Size::fill(),
             height: 32.,
             disabled: false,
+            allow_create: false,
             on_pick: (move |cluster: Cluster| selected.set(Some(cluster.id))).into(),
         },
     )

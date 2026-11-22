@@ -1276,6 +1276,7 @@
   "oneclient.clusters.picker.caption.oneclient": "Grouped by Minecraft version",
   "oneclient.clusters.picker.empty": "No instances match your search or filters.",
   "oneclient.clusters.picker.loading": "Loading instances",
+  "oneclient.clusters.picker.new_instance": "New instance…",
   "oneclient.clusters.reset.running": "Close the game before resetting this instance.",
   "oneclient.clusters.reset.shared_note": "This version uses the shared game folder, so the config files there are kept. Other versions use them too.",
   "oneclient.clusters.reset.title": "Reset instance",

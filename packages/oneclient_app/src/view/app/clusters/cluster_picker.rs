@@ -1,6 +1,7 @@
 use freya::prelude::*;
 use oneclient_core::clusters::Cluster;
 
+use super::instance::CreateInstanceModal;
 use super::page::{
     Filter, Sort, cluster_matches, filter_menu, loader_options, recent_line_heads, search_input,
     section_header, shown, toolbar,
@@ -32,17 +33,21 @@ pub struct ClusterPickerButton {
     pub width: Size,
     pub height: f32,
     pub disabled: bool,
+    /// Show a "New instance" entry that opens the create wizard (browser pickers).
+    pub allow_create: bool,
     pub on_pick: EventHandler<Cluster>,
 }
 
 impl Component for ClusterPickerButton {
     fn render(&self) -> impl IntoElement {
         let mut open = use_state(|| false);
+        let mut creating = use_state(|| false);
         let mut hovered = use_state(|| false);
         let a11y_id = use_a11y();
         let focus = use_focus(a11y_id);
         let on_pick = self.on_pick.clone();
         let disabled = self.disabled;
+        let allow_create = self.allow_create;
 
         rect()
             .width(self.width.clone())
@@ -97,13 +102,27 @@ impl Component for ClusterPickerButton {
                 ClusterPickerModal {
                     selected: self.selected,
                     only: self.only.clone(),
+                    allow_create,
                     on_close: (move |()| open.set(false)).into(),
                     on_pick: (move |cluster: Cluster| {
                         open.set(false);
                         on_pick.call(cluster);
                     })
                     .into(),
+                    on_create: (move |()| {
+                        open.set(false);
+                        creating.set(true);
+                    })
+                    .into(),
                 }
+                .into_element()
+            }))
+            .maybe_child(creating.read().then(|| {
+                CreateInstanceModal::new(move |()| {
+                    creating.set(false);
+                    // Reopen the picker so the freshly created instance can be picked.
+                    open.set(true);
+                })
                 .into_element()
             }))
     }
@@ -113,8 +132,10 @@ impl Component for ClusterPickerButton {
 pub struct ClusterPickerModal {
     pub selected: Option<i64>,
     pub only: Option<Vec<i64>>,
+    pub allow_create: bool,
     pub on_pick: EventHandler<Cluster>,
     pub on_close: EventHandler<()>,
+    pub on_create: EventHandler<()>,
 }
 
 impl Component for ClusterPickerModal {
@@ -235,6 +256,7 @@ impl Component for ClusterPickerModal {
 
         let close = self.on_close.clone();
         let outside = self.on_close.clone();
+        let on_create = self.on_create.clone();
         let inline_search = *content_w.read() >= INLINE_SEARCH_MIN_W;
 
         let filters = rect()
@@ -242,6 +264,17 @@ impl Component for ClusterPickerModal {
             .cross_align(Alignment::Center)
             .spacing(8.)
             .child(filter_menu(&available_loaders, loaders, sort))
+            .maybe_child(self.allow_create.then(|| {
+                Button::new()
+                    .ghost()
+                    .on_press(move |_| on_create.call(()))
+                    .child(
+                        Icon::new(IconType::Plus)
+                            .size(14.)
+                            .color(colors::fg_secondary()),
+                    )
+                    .text(t("oneclient.clusters.picker.new_instance").to_string())
+            }))
             .child(
                 Button::new()
                     .ghost()
