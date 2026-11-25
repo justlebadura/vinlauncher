@@ -16,7 +16,7 @@ license = "GPL-3.0-only"
 readme = "README.md"
 repository = "https://example.invalid/vinlauncher"
 rust-version = "1.97"
-version = "1.0.0"
+version = "1.1.0"
 
 [workspace.dependencies]
 # core
