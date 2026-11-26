@@ -7,6 +7,8 @@ use oneclient_common::domain::ProviderId;
 pub enum PackageError {
     #[error("no primary download file on version")]
     NoPrimaryFile,
+    #[error("the author of {0} blocked third-party downloads; download it manually from its CurseForge page or use the Modrinth version")]
+    DownloadBlocked(String),
     #[error("package is not a modpack")]
     NotModpack,
     #[error("unsupported modpack format")]

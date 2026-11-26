@@ -90,6 +90,13 @@ impl PackageStore {
     ) -> ContentResult<ArtifactRow> {
         let file = version.primary_file().ok_or(PackageError::NoPrimaryFile)?;
 
+        // A blocked CurseForge download arrives with an empty URL; without
+        // this guard the failure surfaces as the cryptic
+        // "relative URL without a base" from the URL parser.
+        if url::Url::parse(&file.url).is_err() {
+            return Err(PackageError::DownloadBlocked(file.file_name.clone()).into());
+        }
+
         download::download_version_file(
             provider_id,
             &project.id,
